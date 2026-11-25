@@ -89,3 +89,25 @@ export interface CreateOrderResult {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
 }
+
+// ── Auth (phone OTP) ───────────────────────────────────────────────
+
+export interface SessionUserDto {
+  id: string;
+  phone: string;
+  name: string | null;
+  role: "customer" | "rider" | "merchant" | "admin";
+}
+
+export interface RequestOtpResult {
+  ok: boolean;
+  ttlMinutes: number;
+  /** Present only when no SMS provider is configured (dev/testing). */
+  devCode?: string;
+}
+
+export interface VerifyOtpResult {
+  token: string;
+  expiresAt: string;
+  user: SessionUserDto;
+}

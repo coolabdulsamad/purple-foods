@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createRouter, publicQuery } from "./middleware";
+import { createRouter, protectedQuery, publicQuery } from "./middleware";
 import {
   getRestaurantBySlug,
   listAreas,
   listRestaurants,
 } from "./queries/catalog";
-import { createOrder, listOrdersByPhone } from "./queries/orders";
+import { createOrder, listOrdersByUser } from "./queries/orders";
+import { requestOtp, revokeSession, verifyOtp } from "./queries/auth";
 
 const catalogRouter = createRouter({
   areas: publicQuery.query(() => listAreas()),
@@ -49,17 +50,39 @@ const ordersRouter = createRouter({
           .max(50),
       }),
     )
-    .mutation(({ input }) => createOrder(input)),
+    .mutation(({ input, ctx }) => createOrder(input, ctx.user)),
 
-  mine: publicQuery
+  // Signed-in customers only — orders are private to the session identity.
+  mine: protectedQuery.query(({ ctx }) => listOrdersByUser(ctx.user.id)),
+});
+
+const authRouter = createRouter({
+  requestOtp: publicQuery
     .input(z.object({ phone: z.string().min(7).max(20) }))
-    .query(({ input }) => listOrdersByPhone(input.phone)),
+    .mutation(({ input }) => requestOtp(input.phone)),
+
+  verifyOtp: publicQuery
+    .input(
+      z.object({
+        phone: z.string().min(7).max(20),
+        code: z.string().min(4).max(8),
+      }),
+    )
+    .mutation(({ input }) => verifyOtp(input.phone, input.code)),
+
+  me: protectedQuery.query(({ ctx }) => ctx.user),
+
+  logout: publicQuery.mutation(async ({ ctx }) => {
+    if (ctx.sessionToken) await revokeSession(ctx.sessionToken);
+    return { ok: true };
+  }),
 });
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
   catalog: catalogRouter,
   orders: ordersRouter,
+  auth: authRouter,
 });
 
 export type AppRouter = typeof appRouter;
