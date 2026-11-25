@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   ArrowLeft, ArrowRight, Banknote, Bike, ChefHat, ClipboardList, Copy, CreditCard, Flame,
-  Loader2, Minus, PackageCheck, Plus, Search, ShoppingBag, Star, Trash2, User, Wallet, WifiOff,
+  Loader2, LogOut, Minus, PackageCheck, Plus, Search, ShieldCheck, ShoppingBag, Star, Trash2, User, Wallet, WifiOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
@@ -91,7 +91,7 @@ export function HomePage() {
     {
       rotate: '-rotate-[1deg]',
       title: 'Suya nights, till 2am',
-      body: 'Late grills from Yaba to the Island. Yaji-heavy, flame-first, still hot at your door.',
+      body: 'Late grills from Wuse to Gwarinpa. Yaji-heavy, flame-first, still hot at your door.',
       cta: 'See grills',
       action: () => {
         setCat('Suya & Grill')
@@ -104,11 +104,11 @@ export function HomePage() {
     <div>
       <section className="relative overflow-hidden bg-plum-deep px-4 pb-8 pt-20 text-lilac">
         <Grain />
-        <Mono className="text-saffron">[LAGOS · {(area?.name ?? 'LAGOS').toUpperCase()}]</Mono>
+        <Mono className="text-saffron">[ABUJA · {(area?.name ?? 'ABUJA').toUpperCase()}]</Mono>
         <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.02] tracking-tight">
           Hungry?
           <br />
-          Lagos is <span className="text-saffron">served hot.</span>
+          Abuja is <span className="text-saffron">served hot.</span>
         </h1>
         <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/80">
           Restaurants, grills and bukas around you — tracked from flame to your doorstep.
@@ -390,7 +390,7 @@ const PAYMENTS = [
 ]
 
 export function CheckoutPage() {
-  const { lines, subtotalKobo, deliveryFeeKobo, totalKobo, area, profile, saveProfile, clear, cartRestaurant } = useStore()
+  const { lines, subtotalKobo, deliveryFeeKobo, totalKobo, area, profile, saveProfile, clear, cartRestaurant, session } = useStore()
   const navigate = useNavigate()
   const areasQuery = trpc.catalog.areas.useQuery()
   const [form, setForm] = useState({ name: profile.name, phone: profile.phone, street: profile.street, notes: profile.notes })
@@ -412,6 +412,11 @@ export function CheckoutPage() {
   useEffect(() => {
     if (!areaId && areasQuery.data?.length) setAreaId(area?.id ?? areasQuery.data[0].id)
   }, [areasQuery.data, area, areaId])
+
+  // Keep the form pinned to a sign-in that happens after mount.
+  useEffect(() => {
+    if (session) setForm((f) => ({ ...f, phone: session.user.phone, name: f.name || session.user.name || '' }))
+  }, [session])
 
   if (!lines.length) {
     return (
@@ -470,9 +475,21 @@ export function CheckoutPage() {
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             inputMode="tel"
-            className="mt-1 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-royal"
+            readOnly={!!session}
+            aria-readonly={!!session}
+            className={`mt-1 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-royal ${session ? 'opacity-70' : ''}`}
             placeholder="0803 000 0000"
           />
+          {session ? (
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-mint">
+              <ShieldCheck className="h-3 w-3 text-mint" aria-hidden="true" />
+              Signed in — your order is pinned to this number.
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Tip: sign in on the Account page to track every order automatically.
+            </p>
+          )}
           {errors.phone && <p className="mt-1 text-xs font-semibold text-destructive">{errors.phone}</p>}
         </div>
         <div>
@@ -482,7 +499,7 @@ export function CheckoutPage() {
             value={form.street}
             onChange={(e) => setForm({ ...form, street: e.target.value })}
             className="mt-1 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-royal"
-            placeholder="12B Admiralty Way"
+            placeholder="12B Aminu Kano Crescent"
           />
           {errors.street && <p className="mt-1 text-xs font-semibold text-destructive">{errors.street}</p>}
         </div>
@@ -596,14 +613,13 @@ function EtaClock({ placedAt }: { placedAt: string }) {
 }
 
 export function OrdersPage() {
-  const { profile } = useStore()
+  const { session } = useStore()
   const [params] = useSearchParams()
   const toasted = useRef(false)
-  const hasPhone = profile.phone.replace(/\D/g, '').length >= 10
-  const ordersQuery = trpc.orders.mine.useQuery(
-    { phone: profile.phone },
-    { enabled: hasPhone, refetchInterval: 15000 },
-  )
+  const ordersQuery = trpc.orders.mine.useQuery(undefined, {
+    enabled: !!session,
+    refetchInterval: 15000,
+  })
 
   useEffect(() => {
     const fresh = params.get('new')
@@ -613,16 +629,16 @@ export function OrdersPage() {
     }
   }, [params])
 
-  if (!hasPhone) {
+  if (!session) {
     return (
       <div className="flex flex-col items-center px-4 pt-32 text-center">
         <PackageCheck className="h-10 w-10 text-lilac-deep" aria-hidden="true" />
-        <h1 className="mt-4 font-display text-xl font-extrabold text-plum">No orders on this phone</h1>
+        <h1 className="mt-4 font-display text-xl font-extrabold text-plum">Sign in to see your orders</h1>
         <p className="mt-1 max-w-[30ch] text-sm text-muted-foreground">
-          Orders you place are tied to your phone number. Add it in Account to see your history here.
+          Your orders are tied to your phone number. Sign in with a one-time code — no password needed.
         </p>
         <Link to="/account" className="mt-5 rounded-full bg-plum px-6 py-3 text-sm font-bold text-lilac active:scale-95">
-          Add my number
+          Sign in with my number
         </Link>
       </div>
     )
@@ -716,11 +732,56 @@ export function OrdersPage() {
 /* ----------------------------- ACCOUNT ----------------------------- */
 
 export function AccountPage() {
-  const { profile, saveProfile, area } = useStore()
+  const { profile, saveProfile, area, session, setSession, signOut } = useStore()
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
   const [err, setErr] = useState('')
   const code = 'PURPLE-' + (profile.name ? String(1000 + (profile.name.length * 37) % 9000) : 'GUEST')
+
+  // ── Phone OTP sign-in ──
+  const [otpPhone, setOtpPhone] = useState(profile.phone)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+
+  const requestOtp = trpc.auth.requestOtp.useMutation({
+    onSuccess: (r) => {
+      setOtpSent(true)
+      if (r.devCode) {
+        // No SMS provider configured yet — surface the code for testing.
+        setOtpCode(r.devCode)
+        toast.success('Dev code issued', { description: `SMS is not configured yet — your code is ${r.devCode}.` })
+      } else {
+        toast.success('Code sent', { description: `We texted you a 6-digit code. It expires in ${r.ttlMinutes} minutes.` })
+      }
+    },
+    onError: (e) => toast.error('Could not send code', { description: e.message }),
+  })
+
+  const verifyOtp = trpc.auth.verifyOtp.useMutation({
+    onSuccess: (r) => {
+      setSession({ token: r.token, expiresAt: r.expiresAt, user: r.user })
+      setOtpSent(false)
+      setOtpCode('')
+      toast.success('Signed in', { description: `Welcome${r.user.name ? `, ${r.user.name}` : ''}. Your orders now follow this number.` })
+    },
+    onError: (e) => toast.error('Sign-in failed', { description: e.message }),
+  })
+
+  const logout = trpc.auth.logout.useMutation()
+
+  const sendCode = () => {
+    if (otpPhone.replace(/\D/g, '').length < 10) {
+      toast.error('Enter a valid phone number', { description: 'e.g. 0803 000 0000 or +2348030000000' })
+      return
+    }
+    requestOtp.mutate({ phone: otpPhone.trim() })
+  }
+
+  const handleSignOut = () => {
+    logout.mutate()
+    signOut()
+    toast.success('Signed out')
+  }
 
   const copyCode = async () => {
     try {
@@ -744,6 +805,84 @@ export function AccountPage() {
   return (
     <div className="px-4 pt-20">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Account</h1>
+
+      {session ? (
+        <div className="mt-4 rounded-2xl border border-mint bg-mint-soft p-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-mint" aria-hidden="true" />
+            <p className="font-display text-sm font-extrabold text-plum">Signed in</p>
+            <Mono className="ml-auto text-muted-foreground">[{session.user.role.toUpperCase()}]</Mono>
+          </div>
+          <p className="mt-2 font-mono text-sm font-bold text-plum">{session.user.phone}</p>
+          {session.user.name && <p className="text-xs text-muted-foreground">{session.user.name}</p>}
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Orders, tracking and history are tied to this number until {new Date(session.expiresAt).toLocaleDateString()}.
+          </p>
+          <button
+            onClick={handleSignOut}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-plum/20 bg-card py-2.5 text-sm font-bold text-plum active:scale-[0.98]"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl bg-plum-deep p-4 text-lilac">
+          <Mono className="text-saffron">[SIGN IN]</Mono>
+          <h2 className="mt-1 font-display text-lg font-extrabold leading-tight">Your number is your account.</h2>
+          <p className="mt-1 text-xs leading-relaxed text-lilac/80">
+            No password. We text you a one-time code, you are in — orders and tracking follow your number.
+          </p>
+          <div className="mt-3 space-y-2.5">
+            <input
+              value={otpPhone}
+              onChange={(e) => setOtpPhone(e.target.value)}
+              aria-label="Phone number for sign-in"
+              inputMode="tel"
+              placeholder="Phone — 0803 000 0000"
+              className="w-full rounded-xl border border-lilac/20 bg-plum px-4 py-3 text-sm text-lilac outline-none placeholder:text-lilac/40 focus:border-saffron"
+            />
+            {otpSent && (
+              <input
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                aria-label="6-digit sign-in code"
+                inputMode="numeric"
+                placeholder="6-digit code"
+                className="w-full rounded-xl border border-lilac/20 bg-plum px-4 py-3 text-center font-mono text-lg font-bold tracking-[0.4em] text-saffron outline-none placeholder:text-lilac/40 focus:border-saffron"
+              />
+            )}
+            {!otpSent ? (
+              <button
+                onClick={sendCode}
+                disabled={requestOtp.isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-3 text-sm font-extrabold text-plum-deep active:scale-[0.98] disabled:opacity-60"
+              >
+                {requestOtp.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                Text me a code
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => verifyOtp.mutate({ phone: otpPhone.trim(), code: otpCode })}
+                  disabled={verifyOtp.isPending || otpCode.length !== 6}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-full bg-saffron py-3 text-sm font-extrabold text-plum-deep active:scale-[0.98] disabled:opacity-60"
+                >
+                  {verifyOtp.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  Verify & sign in
+                </button>
+                <button
+                  onClick={sendCode}
+                  disabled={requestOtp.isPending}
+                  className="rounded-full border border-lilac/30 px-4 text-xs font-bold text-lilac active:scale-[0.98] disabled:opacity-60"
+                >
+                  Resend
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center gap-2">
@@ -783,7 +922,7 @@ export function AccountPage() {
           </button>
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-          Your phone number links your orders on the live database. One-time passcode sign-in arrives with the auth phase.
+          Your phone number links your orders on the live database. Sign in above so checkout and tracking stay automatic.
         </p>
       </div>
 
