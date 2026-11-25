@@ -1,54 +1,39 @@
-export interface MenuItem {
-  id: string
-  name: string
-  desc: string
-  price: number
-  category: string
-  spicy?: boolean
-  popular?: boolean
-}
+import type { MenuItemDto, RestaurantDto } from '@contracts/types'
 
-export interface Restaurant {
+export type { AreaDto, MenuItemDto, OrderDto, RestaurantDetailDto, RestaurantDto } from '@contracts/types'
+
+/** A restaurant snapshot kept with the cart so totals render offline. */
+export interface CartRestaurant {
   id: string
+  slug: string
   name: string
-  area: string
-  rating: number
-  reviews: number
-  etaMin: number
-  etaMax: number
-  deliveryFee: number
-  promo?: string
-  tags: string[]
-  menu: MenuItem[]
+  deliveryFeeKobo: number
 }
 
 export interface CartLine {
   key: string
-  rid: string
-  rname: string
+  restaurant: CartRestaurant
   itemId: string
   name: string
-  price: number
+  priceKobo: number
   qty: number
 }
 
-export interface OrderInput {
+/** Delivery/profile details the customer typed — kept on-device until
+ *  checkout sends them to the API (phone OTP auth lands in the auth phase). */
+export interface Profile {
   name: string
   phone: string
   street: string
-  area: string
   notes: string
-  payment: string
 }
 
-export interface Order {
+export interface SelectedArea {
   id: string
-  placedAt: number
-  lines: CartLine[]
-  subtotal: number
-  deliveryFee: number
-  total: number
-  input: OrderInput
+  name: string
 }
+
+export type AddableItem = MenuItemDto
+export type AddableRestaurant = RestaurantDto
 
 export const ORDER_STEPS = ['Received', 'Preparing', 'On the way', 'Delivered'] as const

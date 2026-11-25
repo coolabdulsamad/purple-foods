@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { ChevronDown, Home, MapPin, Minus, Plus, ReceiptText, ShoppingBag, User } from 'lucide-react'
-import { AREAS } from './data'
+import { trpc } from '@/providers/trpc'
 import { useStore } from './store'
-import type { MenuItem, Restaurant } from './types'
+import type { MenuItemDto, RestaurantDto } from './types'
 
-export const fmt = (n: number) => '₦' + n.toLocaleString('en-NG')
+/** Format kobo as naira: 280000 → "₦2,800" (kobo is the app-wide money unit). */
+export const fmt = (kobo: number) => {
+  const naira = kobo / 100
+  return '₦' + naira.toLocaleString('en-NG', { minimumFractionDigits: naira % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
+}
 
 export function hashStr(s: string): number {
   let h = 7
@@ -77,6 +81,7 @@ export function Mono({ children, className = '' }: { children: ReactNode; classN
 
 function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { area, setArea } = useStore()
+  const areasQuery = trpc.catalog.areas.useQuery(undefined, { enabled: open })
   useEffect(() => {
     if (!open) return
     const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -91,21 +96,23 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
         <p className="font-display text-lg font-bold text-plum">Delivering to</p>
         <p className="mt-0.5 text-sm text-muted-foreground">Pick your Lagos zone — menus and fees follow it.</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          {AREAS.map((a) => (
+          {(areasQuery.data ?? []).map((a) => (
             <button
-              key={a}
+              key={a.id}
               onClick={() => {
-                setArea(a)
+                setArea({ id: a.id, name: a.name })
                 onClose()
               }}
               className={`rounded-xl border px-3 py-3 text-left text-sm font-medium transition-colors duration-150 ${
-                a === area ? 'border-royal bg-lilac text-plum' : 'border-border bg-background hover:bg-lilac'
+                a.id === area?.id ? 'border-royal bg-lilac text-plum' : 'border-border bg-background hover:bg-lilac'
               }`}
             >
               <MapPin className="mb-1 h-4 w-4 text-royal" aria-hidden="true" />
-              {a}
+              {a.name}
             </button>
           ))}
+          {areasQuery.isLoading && <p className="col-span-2 py-4 text-center text-xs text-muted-foreground">Loading areas…</p>}
+          {areasQuery.isError && <p className="col-span-2 py-4 text-center text-xs font-semibold text-destructive">Could not load areas — check your connection and retry.</p>}
         </div>
       </div>
     </div>
@@ -113,7 +120,14 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 export function TopBar() {
-  const { area } = useStore()
+  const { area, setArea } = useStore()
+  const areasQuery = trpc.catalog.areas.useQuery()
+  // Default to the first live area until the customer picks one.
+  useEffect(() => {
+    if (!area && areasQuery.data?.length) {
+      setArea({ id: areasQuery.data[0].id, name: areasQuery.data[0].name })
+    }
+  }, [area, areasQuery.data, setArea])
   const [scrolled, setScrolled] = useState(false)
   const [sheet, setSheet] = useState(false)
   const loc = useLocation()
@@ -135,10 +149,10 @@ export function TopBar() {
           <button
             onClick={() => setSheet(true)}
             className="flex items-center gap-1.5 rounded-full py-1.5 pr-2 text-sm font-semibold"
-            aria-label={`Delivery area: ${area}. Tap to change`}
+            aria-label={`Delivery area: ${area?.name ?? 'not set'}. Tap to change`}
           >
             <MapPin className={`h-4 w-4 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
-            {area}
+            {area?.name ?? 'Lagos'}
             <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
           </button>
           <Link to="/" className="font-display text-base font-extrabold tracking-tight">
@@ -195,7 +209,7 @@ export function BottomNav() {
   )
 }
 
-export function AddButton({ item, r }: { item: MenuItem; r: Restaurant }) {
+export function AddButton({ item, r }: { item: MenuItemDto; r: RestaurantDto }) {
   const { lines, add, setQty } = useStore()
   const line = lines.find((l) => l.key === `${r.id}:${item.id}`)
   if (!line) {
@@ -204,7 +218,7 @@ export function AddButton({ item, r }: { item: MenuItem; r: Restaurant }) {
         onClick={() => add(item, r)}
         className="rounded-full bg-plum px-4 py-2 text-xs font-bold text-lilac transition-transform duration-150 hover:bg-royal active:scale-95"
       >
-        ADD · {fmt(item.price)}
+        ADD · {fmt(item.priceKobo)}
       </button>
     )
   }

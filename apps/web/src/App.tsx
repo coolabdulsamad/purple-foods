@@ -26,7 +26,7 @@ export default function App() {
           <main className="pb-24">
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/r/:id" element={<RestaurantPage />} />
+              <Route path="/r/:slug" element={<RestaurantPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/orders" element={<OrdersPage />} />
