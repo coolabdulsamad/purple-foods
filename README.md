@@ -8,16 +8,21 @@ Created and copyrighted by **Smadsoft Technology Limited**.
 
 ```
 apps/
-  web/       Customer storefront (React + TypeScript + Vite + Tailwind + shadcn/ui, PWA)
+  web/       Customer storefront — FULL-STACK: React PWA + tRPC/Hono API + Drizzle (live on Neon Postgres)
   admin/     Admin Command Center (35+ governed pages, RBAC) — Phase 1+
-  api/       Backend API (tRPC + Drizzle ORM + Hono) — Phase 1+
   mobile/    Flutter apps (customer + rider, iOS/Android) — Phase 2+
 packages/
   types/     Shared TypeScript types and domain contracts
   config/    Shared tooling config (eslint, tsconfig, tailwind preset)
 docs/        Project documentation (see master blueprint)
 infra/       Infrastructure-as-code, CI workflows, deploy scripts
+  db/migrations/  Canonical DDL + seed SQL (0001_init, 0002_seed_lagos) — applied to Neon
 ```
+
+> Note: the API originally planned as a separate `apps/api` service is grafted directly
+> into `apps/web` (`api/` + `contracts/` + `db/` beside `src/`), so the storefront ships as
+> one deployable unit. `packages/db` schema now lives at `apps/web/db/schema.ts` (Drizzle),
+> with `infra/db/migrations/` remaining the DDL source of truth.
 
 ## Master references
 
@@ -37,11 +42,13 @@ infra/       Infrastructure-as-code, CI workflows, deploy scripts
 | P4 | 15–20 | Growth & AI: referrals, PurplePass, POS API, batching+ |
 | P5 | 21–24 | QA, load test, pen test, store review, city launch |
 
+**Status:** P1 foundation live — Neon schema + Lagos seed applied; storefront reads/writes the real database (catalog, order placement with server-side pricing, balanced ledger, order tracking).
+
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # customer storefront (apps/web)
+npm run dev        # customer storefront + API (apps/web)
 ```
 
 ## License
