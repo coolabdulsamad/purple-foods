@@ -94,7 +94,7 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
       <button className="absolute inset-0 bg-plum-deep/60" onClick={onClose} aria-label="Close area picker" />
       <div className="relative w-full max-w-[480px] rounded-t-3xl bg-card p-5 pb-8">
         <p className="font-display text-lg font-bold text-plum">Delivering to</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">Pick your Lagos zone — menus and fees follow it.</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">Pick your Abuja zone — menus and fees follow it.</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           {(areasQuery.data ?? []).map((a) => (
             <button
@@ -122,11 +122,16 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function TopBar() {
   const { area, setArea } = useStore()
   const areasQuery = trpc.catalog.areas.useQuery()
-  // Default to the first live area until the customer picks one.
+  // Default to the first live area until the customer picks one, and
+  // re-sync a stored area's name from the API (names can change server-side).
   useEffect(() => {
-    if (!area && areasQuery.data?.length) {
+    if (!areasQuery.data?.length) return
+    if (!area) {
       setArea({ id: areasQuery.data[0].id, name: areasQuery.data[0].name })
+      return
     }
+    const fresh = areasQuery.data.find((a) => a.id === area.id)
+    if (fresh && fresh.name !== area.name) setArea({ id: fresh.id, name: fresh.name })
   }, [area, areasQuery.data, setArea])
   const [scrolled, setScrolled] = useState(false)
   const [sheet, setSheet] = useState(false)
@@ -152,7 +157,7 @@ export function TopBar() {
             aria-label={`Delivery area: ${area?.name ?? 'not set'}. Tap to change`}
           >
             <MapPin className={`h-4 w-4 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
-            {area?.name ?? 'Lagos'}
+            {area?.name ?? 'Abuja'}
             <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
           </button>
           <Link to="/" className="font-display text-base font-extrabold tracking-tight">

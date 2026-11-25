@@ -1,49 +1,53 @@
-# Purple Foods — Customer Web App (apps/web)
+# Purple Foods — apps/web
 
-Full-stack customer storefront for the Purple Foods platform (Lagos launch):
-React 19 + TypeScript + Vite + Tailwind CSS + shadcn/ui PWA frontend, with the
-backend grafted in — Hono + tRPC 11 + Drizzle ORM on **Neon Postgres**.
-
-## Layout
+Customer storefront **and** grafted API, one deployable unit:
 
 ```
-src/         React frontend (pages, store, ui)
-api/         Hono server + tRPC routers (catalog, orders)
-contracts/   Shared DTOs — all money is kobo as number at the API boundary
-db/          Drizzle schema (mirrors infra/db/migrations) + connection
+src/        React 19 + Vite PWA (customer app)
+api/        Hono + tRPC API (boot.ts bundles to dist/boot.js)
+contracts/  Shared DTOs/errors between api/ and src/ (money = kobo, plain number)
+db/         Drizzle schema mirror + seed stub (canonical DDL lives in infra/db/migrations/)
 ```
 
 ## Run
 
 ```bash
-npm install
 cp .env.example .env   # fill DATABASE_URL (Neon) — never commit .env
-npm run dev            # http://localhost:3000 (frontend + /api/trpc)
-npm run check          # type-check
-npm run build          # dist/public (frontend) + dist/boot.js (server bundle)
-npm start              # production server
+npm install
+npm run dev            # Vite dev server + API
+npm run check          # typecheck (app + server)
+npm run build          # PWA bundle + dist/boot.js API bundle
 ```
 
 ## Database
 
-Canonical DDL and Lagos seed data live in `infra/db/migrations/` at the repo
-root and are applied to Neon directly. `db/schema.ts` mirrors that DDL for
-typed queries; `db/seed.ts` is intentionally a no-op.
+Canonical DDL + seeds: `infra/db/migrations/` (repo root) —
 
-## PWA icons
+- `0001_init.sql` — schema (users, cities, areas, merchants, menu, orders, ledger…)
+- `0002_seed_lagos.sql` — initial launch data (idempotent)
+- `0003_abuja.sql` — Lagos → Abuja/FCT switch, in place (ids kept stable)
+- `0004_auth.sql` — phone OTP auth (`otp_codes`, `sessions`)
 
-Binary icons are generated, not committed. After cloning:
+Migrations are applied through the Neon guided-migration flow (temp branch →
+verify → apply), not from the app. `db/seed.ts` is intentionally a no-op.
 
-```bash
-pip install Pillow
-python3 scripts/generate-icons.py   # writes public/icon-192.png, icon-512.png, apple-touch-icon.png, favicon.png
-```
+## Auth (phone OTP)
+
+- `POST auth.requestOtp { phone }` → 6-digit code (HMAC-SHA256 hashed, 10-min
+  TTL, 5 requests/phone/hour). SMS goes through Termii when `TERMII_API_KEY`
+  is set; without it the response carries `devCode` so sign-in stays testable.
+- `POST auth.verifyOtp { phone, code }` → opaque bearer token (stored as
+  SHA-256 hash, 30-day expiry) + the session user. Phone is the customer
+  identity key; first verify creates the user row.
+- Send `Authorization: Bearer <token>` on every request (the web client reads
+  it from localStorage `pf2-session`). `orders.mine` is session-only;
+  `orders.create` pins signed-in orders to the session identity — a phone
+  typed at checkout never overrides it. Guest checkout stays supported.
 
 ## State
 
-Catalog and orders are live database reads/writes (server-side pricing,
-transactional order creation, balanced ledger, order events audit trail).
-Only the customer's cart/profile draft persists in `localStorage`; phone OTP
-sign-in lands with the auth phase.
+- Catalog, orders, auth: live Neon Postgres.
+- On-device only: cart, selected area, delivery profile draft, session token
+  (localStorage `pf2-*`).
 
-© Smadsoft Technology Limited
+© Smadsoft Technology Limited.
