@@ -11,7 +11,7 @@ export default function App() {
         <aside aria-hidden="true" className="hidden max-w-xs shrink-0 text-lilac lg:sticky lg:top-20 lg:block lg:self-start">
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3em] text-saffron">Purple Foods</p>
           <p className="mt-3 font-display text-5xl font-extrabold leading-[0.98] tracking-tight">
-            Lagos,
+            Abuja,
             <br />
             served
             <br />

@@ -13,6 +13,19 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        // Attach the phone-OTP session token when signed in.
+        try {
+          const raw = localStorage.getItem("pf2-session");
+          if (!raw) return {};
+          const session = JSON.parse(raw) as { token?: string };
+          return session.token
+            ? { Authorization: `Bearer ${session.token}` }
+            : {};
+        } catch {
+          return {};
+        }
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),

@@ -1,6 +1,13 @@
-import type { MenuItemDto, RestaurantDto } from '@contracts/types'
+import type { MenuItemDto, RestaurantDto, SessionUserDto } from '@contracts/types'
 
-export type { AreaDto, MenuItemDto, OrderDto, RestaurantDetailDto, RestaurantDto } from '@contracts/types'
+export type { AreaDto, MenuItemDto, OrderDto, RestaurantDetailDto, RestaurantDto, SessionUserDto } from '@contracts/types'
+
+/** An active phone-OTP sign-in, persisted on-device. */
+export interface Session {
+  token: string
+  expiresAt: string
+  user: SessionUserDto
+}
 
 /** A restaurant snapshot kept with the cart so totals render offline. */
 export interface CartRestaurant {
@@ -20,7 +27,7 @@ export interface CartLine {
 }
 
 /** Delivery/profile details the customer typed — kept on-device until
- *  checkout sends them to the API (phone OTP auth lands in the auth phase). */
+ *  checkout sends them to the API. */
 export interface Profile {
   name: string
   phone: string

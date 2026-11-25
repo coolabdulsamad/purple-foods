@@ -26,7 +26,7 @@ export default defineConfig({
       manifest: {
         name: 'Purple Foods',
         short_name: 'Purple Foods',
-        description: 'Food delivery, groceries and more — Lagos first.',
+        description: 'Food delivery, groceries and more — Abuja first.',
         theme_color: '#2E1065',
         background_color: '#F5F3FF',
         display: 'standalone',

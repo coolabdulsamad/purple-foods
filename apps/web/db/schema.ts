@@ -48,7 +48,7 @@ export const cities = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    state: text("state").notNull().default("Lagos"),
+    state: text("state").notNull().default("FCT"),
     country: text("country").notNull().default("Nigeria"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -297,6 +297,45 @@ export const ledgerEntries = pgTable(
   ],
 );
 
+// ── Auth (0004_auth.sql) ───────────────────────────────────────────
+// Only hashes are ever stored: OTP codes are HMAC-SHA256 (pepper =
+// APP_SECRET), session tokens are opaque 256-bit values kept as SHA-256.
+
+export const otpCodes = pgTable(
+  "otp_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phone: text("phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    purpose: text("purpose").notNull().default("login"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("idx_otp_codes_phone_created").on(t.phone, t.createdAt)],
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("idx_sessions_user").on(t.userId)],
+);
+
 export const schema = {
   users,
   cities,
@@ -308,4 +347,6 @@ export const schema = {
   orderItems,
   orderEvents,
   ledgerEntries,
+  otpCodes,
+  sessions,
 };

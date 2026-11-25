@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
-import type { CartLine, CartRestaurant, Profile, SelectedArea } from './types'
+import type { CartLine, CartRestaurant, Profile, SelectedArea, Session } from './types'
 import type { MenuItemDto, RestaurantDto } from './types'
 
 interface StoreShape {
@@ -18,6 +18,9 @@ interface StoreShape {
   clear: () => void
   profile: Profile
   saveProfile: (p: Profile) => void
+  session: Session | null
+  setSession: (s: Session) => void
+  signOut: () => void
 }
 
 const StoreCtx = createContext<StoreShape | null>(null)
@@ -37,10 +40,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [area, setArea] = useState<SelectedArea | null>(() => read('pf2-area', null))
   const [lines, setLines] = useState<CartLine[]>(() => read('pf2-cart', []))
   const [profile, setProfile] = useState<Profile>(() => read('pf2-profile', EMPTY_PROFILE))
+  const [session, setSessionState] = useState<Session | null>(() => {
+    const s = read<Session | null>('pf2-session', null)
+    // Drop expired sessions on load.
+    return s && new Date(s.expiresAt).getTime() > Date.now() ? s : null
+  })
 
   useEffect(() => localStorage.setItem('pf2-area', JSON.stringify(area)), [area])
   useEffect(() => localStorage.setItem('pf2-cart', JSON.stringify(lines)), [lines])
   useEffect(() => localStorage.setItem('pf2-profile', JSON.stringify(profile)), [profile])
+  useEffect(() => {
+    if (session) localStorage.setItem('pf2-session', JSON.stringify(session))
+    else localStorage.removeItem('pf2-session')
+  }, [session])
 
   const value = useMemo<StoreShape>(() => {
     const count = lines.reduce((n, l) => n + l.qty, 0)
@@ -74,8 +86,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clear: () => setLines([]),
       profile,
       saveProfile: (p) => setProfile(p),
+      session,
+      setSession: (s) => {
+        setSessionState(s)
+        // Let checkout prefill from the signed-in identity.
+        setProfile((p) => ({
+          ...p,
+          phone: s.user.phone,
+          name: p.name || s.user.name || '',
+        }))
+      },
+      signOut: () => setSessionState(null),
     }
-  }, [area, lines, profile])
+  }, [area, lines, profile, session])
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>
 }

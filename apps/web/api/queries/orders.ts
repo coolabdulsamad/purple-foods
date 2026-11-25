@@ -5,6 +5,7 @@ import type {
   OrderDto,
   OrderItemDto,
   PaymentMethod,
+  SessionUserDto,
 } from "@contracts/types";
 import {
   areas,
@@ -57,9 +58,12 @@ export interface CreateOrderInput {
 
 export async function createOrder(
   input: CreateOrderInput,
+  sessionUser?: SessionUserDto | null,
 ): Promise<CreateOrderResult> {
   const db = getDb();
-  const phone = normalizePhone(input.customerPhone);
+  // A signed-in customer orders as their session identity; the phone they
+  // typed at checkout never overrides it. Guest checkout stays supported.
+  const phone = sessionUser?.phone ?? normalizePhone(input.customerPhone);
   const name = input.customerName.trim();
   const street = input.street.trim();
   if (!name) {
@@ -163,25 +167,34 @@ export async function createOrder(
     const humanRef = newHumanRef();
     try {
       return await db.transaction(async (tx) => {
-        // Find or create the customer by phone; refresh name/last_seen.
-        const existing = await tx
-          .select()
-          .from(users)
-          .where(eq(users.phone, phone))
-          .limit(1);
+        // Signed-in: pin the order to the session user. Guest: find or
+        // create the customer by phone; refresh name/last_seen either way.
         let customerId: string;
-        if (existing[0]) {
-          customerId = existing[0].id;
+        if (sessionUser) {
+          customerId = sessionUser.id;
           await tx
             .update(users)
             .set({ name, lastSeenAt: new Date(), updatedAt: new Date() })
             .where(eq(users.id, customerId));
         } else {
-          const created = await tx
-            .insert(users)
-            .values({ phone, name, role: "customer" })
-            .returning({ id: users.id });
-          customerId = created[0]!.id;
+          const existing = await tx
+            .select()
+            .from(users)
+            .where(eq(users.phone, phone))
+            .limit(1);
+          if (existing[0]) {
+            customerId = existing[0].id;
+            await tx
+              .update(users)
+              .set({ name, lastSeenAt: new Date(), updatedAt: new Date() })
+              .where(eq(users.id, customerId));
+          } else {
+            const created = await tx
+              .insert(users)
+              .values({ phone, name, role: "customer" })
+              .returning({ id: users.id });
+            customerId = created[0]!.id;
+          }
         }
 
         const [order] = await tx
@@ -272,24 +285,15 @@ export async function createOrder(
       });
 }
 
-export async function listOrdersByPhone(rawPhone: string): Promise<OrderDto[]> {
+export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> {
   const db = getDb();
-  const phone = normalizePhone(rawPhone);
-
-  const customerRows = await db
-    .select()
-    .from(users)
-    .where(eq(users.phone, phone))
-    .limit(1);
-  const customer = customerRows[0];
-  if (!customer) return [];
 
   const orderRows = await db
     .select({ order: orders, merchant: merchants, area: areas })
     .from(orders)
     .innerJoin(merchants, eq(orders.merchantId, merchants.id))
     .innerJoin(areas, eq(orders.deliveryAreaId, areas.id))
-    .where(eq(orders.customerId, customer.id))
+    .where(eq(orders.customerId, customerId))
     .orderBy(desc(orders.placedAt))
     .limit(50);
 
