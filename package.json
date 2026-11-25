@@ -1,0 +1,17 @@
+{
+  "name": "purple-foods",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Purple Foods — four-sided food delivery and quick-commerce platform. © Smadsoft Technology Limited.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
