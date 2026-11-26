@@ -5,7 +5,7 @@ import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { LocationDialog } from '../components/LocationDialog'
 import { DishArt, ErrorBlock, Grain, LoadingBlock, Marquee, Mono, Rating, fmt } from '../ui'
-import heroFood from '../assets/hero-food.svg'
+import { heroFoodUri as heroFood } from '../lib/heroImage'
 
 export default function HomePage() {
   const { area, session } = useStore()
