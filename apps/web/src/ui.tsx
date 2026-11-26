@@ -60,6 +60,71 @@ export function DishImage({ src, seed, className }: { src?: string | null; seed:
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={`${className ?? ''} object-cover`} />
 }
 
+/** Circular restaurant logo badge (generated brand mark, DishArt fallback). */
+export function MerchantLogo({ r, className }: { r: RestaurantDto; className?: string }) {
+  return (
+    <span className={`block shrink-0 overflow-hidden rounded-full border-2 border-white bg-white shadow-md ${className ?? ''}`}>
+      <DishImage src={r.logoUrl} seed={`${r.id}-logo`} className="h-full w-full" />
+    </span>
+  )
+}
+
+/**
+ * Branded restaurant card — Glovo-style: cover photo with gradient scrim,
+ * promo + ETA pills on the image, logo badge overlapping, name + rating,
+ * tags and delivery fee below. Used on Search / Restaurants / Home /
+ * Category / Favorites so every listing looks identical.
+ */
+export function MerchantCard({ r, coverClass = 'h-40' }: { r: RestaurantDto; coverClass?: string }) {
+  return (
+    <Link
+      to={`/r/${r.slug}`}
+      className="group block overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl active:scale-[0.99]"
+    >
+      <div className={`relative w-full overflow-hidden ${coverClass}`}>
+        <DishImage
+          src={r.coverUrl}
+          seed={r.id}
+          className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" aria-hidden="true" />
+        {r.promo && (
+          <span className="absolute left-3 top-3 max-w-[70%] truncate rounded-full bg-saffron px-2.5 py-1 text-[11px] font-extrabold text-plum shadow">
+            {r.promo}
+          </span>
+        )}
+        {!r.isOpen && (
+          <span className="absolute right-3 top-3 rounded-full bg-plum/85 px-2.5 py-1 text-[10px] font-extrabold tracking-wider text-lilac">
+            CLOSED
+          </span>
+        )}
+        <span className="absolute bottom-3 right-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-plum shadow">
+          {r.etaMin}–{r.etaMax} min
+        </span>
+      </div>
+      <div className="relative px-4 pb-4">
+        <MerchantLogo r={r} className="-mt-7 h-14 w-14 border-[3px] shadow-lg" />
+        <div className="mt-2 flex items-start justify-between gap-2">
+          <h3 className="font-display text-base font-extrabold tracking-tight text-plum">{r.name}</h3>
+          <span className="mt-0.5 flex shrink-0 items-center gap-1 rounded-full bg-saffron-soft px-2 py-0.5 text-xs font-extrabold text-plum">
+            <Star className="h-3 w-3 fill-saffron text-saffron" aria-hidden="true" />
+            {r.rating.toFixed(1)}
+          </span>
+        </div>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {r.tags.slice(0, 3).join(' · ')} — {r.areaName}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
+          <span className="rounded-full bg-lilac px-2 py-0.5">{r.reviewCount.toLocaleString()} reviews</span>
+          <span className="rounded-full bg-lilac px-2 py-0.5">
+            {r.deliveryFeeKobo === 0 ? 'Free delivery' : `${fmt(r.deliveryFeeKobo)} delivery`}
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 export function Grain() {
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.16] mix-blend-soft-light" aria-hidden="true">
