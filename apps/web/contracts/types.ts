@@ -86,6 +86,8 @@ export interface MenuItemDto {
   category: string;
   isSpicy: boolean;
   isPopular: boolean;
+  /** Real dish photo path (e.g. /dishes/jollof-rice.jpg); null → art. */
+  photoUrl: string | null;
   /** Topping/add-on groups; empty when the item has none (and in the
    *  flat search index, where groups are loaded via the restaurant). */
   optionGroups: MenuOptionGroupDto[];
@@ -121,7 +123,12 @@ export interface OrderDto {
   paymentStatus: PaymentStatus;
   subtotalKobo: number;
   deliveryFeeKobo: number;
+  discountKobo: number;
   totalKobo: number;
+  /** Promo code applied at checkout, if any. */
+  promoCode: string | null;
+  /** True once the signed-in customer has reviewed this order. */
+  reviewed: boolean;
   placedAt: string;
   merchantName: string;
   merchantSlug: string;
@@ -200,4 +207,81 @@ export interface MenuItemSearchDto extends MenuItemDto {
   merchantId: string;
   merchantSlug: string;
   merchantName: string;
+}
+
+// ── Payments ───────────────────────────────────────────────────────
+
+/** A saved card — only display-safe fields ever leave the server. */
+export interface PaymentCardDto {
+  id: string;
+  provider: "paystack" | "flutterwave";
+  last4: string;
+  brand: string;
+  bank: string;
+  expMonth: string;
+  expYear: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface TransactionDto {
+  id: string;
+  orderId: string | null;
+  orderRef: string | null;
+  merchantName: string | null;
+  provider: string;
+  reference: string;
+  amountKobo: number;
+  status: "pending" | "success" | "failed" | "abandoned";
+  channel: string;
+  cardBrand: string;
+  cardLast4: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+/** Result of starting a gateway checkout (Paystack hosted page). */
+export interface InitializePaymentResult {
+  authorizationUrl: string;
+  reference: string;
+}
+
+export interface VerifyPaymentResult {
+  status: "success" | "failed" | "pending";
+  orderRef: string | null;
+}
+
+// ── Reviews ────────────────────────────────────────────────────────
+
+export interface ReviewDto {
+  id: string;
+  rating: number;
+  comment: string;
+  authorName: string;
+  createdAt: string;
+}
+
+// ── Promos & referrals ─────────────────────────────────────────────
+
+export interface PromoCodeDto {
+  code: string;
+  kind: "percent" | "fixed" | "free_delivery";
+  percentOff: number | null;
+  valueKobo: number | null;
+  minOrderKobo: number;
+}
+
+/** Result of checking a code against the current cart. */
+export interface PromoCheckDto {
+  code: string;
+  kind: "percent" | "fixed" | "free_delivery";
+  discountKobo: number;
+  /** Human explanation, e.g. "10% off your order". */
+  label: string;
+}
+
+export interface ReferralDto {
+  code: string;
+  /** Reward the friend gets for using the code, for display. */
+  friendDiscountKobo: number;
 }
