@@ -3,7 +3,6 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
@@ -30,7 +29,9 @@ dist-ssr
 *.db
 *.sqlite
 *.sqlite3
-db/migrations/*.sql
+# db/migrations/*.sql is committed on purpose: the API bundle embeds them for
+# boot-time schema self-heal (see api/lib/migrate.ts). Canonical copies still
+# live in infra/db/migrations/ at the repo root.
 # TypeScript cache
 *.tsbuildinfo
 # Build outputs
