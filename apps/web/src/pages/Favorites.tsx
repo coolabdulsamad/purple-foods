@@ -4,7 +4,7 @@ import { ArrowDownWideNarrow, ArrowLeft, Heart, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
 
 type SortKey = 'recent' | 'rating' | 'eta' | 'fee'
 
@@ -174,30 +174,7 @@ export default function FavoritesPage() {
             <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((r) => (
                 <li key={r.id} className="relative">
-                  <Link
-                    to={`/r/${r.slug}`}
-                    className="block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.99]"
-                  >
-                    <div className="relative">
-                      <DishArt seed={r.id} className="h-32 w-full" />
-                      {!r.isOpen && (
-                        <span className="absolute left-3 top-3 rounded-full bg-plum-deep/90 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-lilac">
-                          Closed
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="font-display text-base font-extrabold tracking-tight text-plum">{r.name}</h3>
-                        <Mono className="shrink-0 text-muted-foreground">{r.areaName.toUpperCase()}</Mono>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-                        <Mono>[{r.etaMin}–{r.etaMax} MIN]</Mono>
-                        <Mono>[<Rating value={r.rating} />]</Mono>
-                        <Mono>[{fmt(r.deliveryFeeKobo)} DELIVERY]</Mono>
-                      </div>
-                    </div>
-                  </Link>
+                  <MerchantCard r={r} />
                   <button
                     onClick={() => toggle.mutate({ merchantId: r.id })}
                     aria-label={`Remove ${r.name} from favorites`}

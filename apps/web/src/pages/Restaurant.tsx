@@ -3,7 +3,7 @@ import { ArrowLeft, Flame, Heart, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { AddButton, DishArt, DishImage, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { AddButton, DishImage, ErrorBlock, LoadingBlock, MerchantLogo, Mono, Rating, fmt } from '../ui'
 
 export default function RestaurantPage() {
   const { slug } = useParams()
@@ -59,7 +59,9 @@ export default function RestaurantPage() {
   return (
     <div className="pb-8">
       <div className="relative">
-        <DishArt seed={r.id + '-hero'} className="h-44 w-full md:h-72" />
+        <DishImage src={r.coverUrl} seed={r.id + '-hero'} className="h-44 w-full md:h-72" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" aria-hidden="true" />
+        <MerchantLogo r={r} className="absolute -bottom-7 left-4 h-16 w-16 border-[3px] shadow-xl md:left-8 md:h-20 md:w-20" />
         <button
           onClick={() => navigate(-1)}
           aria-label="Go back"
@@ -77,7 +79,7 @@ export default function RestaurantPage() {
           <Heart className={`h-4 w-4 transition-colors ${isFavorite ? 'fill-destructive text-destructive' : 'text-plum'}`} aria-hidden="true" />
         </button>
       </div>
-      <div className="mx-auto w-full max-w-5xl px-4 pt-4 md:px-8 md:pt-6">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-10 md:px-8 md:pt-12">
         <div className="flex items-start justify-between gap-2">
           <h1 className="font-display text-2xl font-extrabold leading-tight tracking-tight text-plum md:text-4xl">{r.name}</h1>
           <Mono className="mt-1.5 shrink-0 text-muted-foreground">{r.areaName.toUpperCase()}</Mono>
