@@ -1,14 +1,22 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type {
   AreaDto,
   CityDto,
   MenuItemDto,
   MenuItemSearchDto,
+  MenuOptionGroupDto,
   NearestAreaDto,
   RestaurantDetailDto,
   RestaurantDto,
 } from "@contracts/types";
-import { areas, cities, merchants, menuItems } from "@db/schema";
+import {
+  areas,
+  cities,
+  merchants,
+  menuItemOptionGroups,
+  menuItemOptions,
+  menuItems,
+} from "@db/schema";
 import { getDb } from "./connection";
 
 function toRestaurantDto(row: {
@@ -133,19 +141,69 @@ export async function getRestaurantBySlug(
     .where(eq(menuItems.merchantId, row.merchant.id))
     .orderBy(asc(menuItems.category), asc(menuItems.name));
 
-  const menu: MenuItemDto[] = items
-    .filter((i) => i.isAvailable)
-    .map((i) => ({
-      id: i.id,
-      name: i.name,
-      description: i.description,
-      priceKobo: Number(i.priceKobo),
-      category: i.category,
-      isSpicy: i.isSpicy,
-      isPopular: i.isPopular,
-    }));
+  const available = items.filter((i) => i.isAvailable);
+  const groupsByItem = await loadOptionGroups(available.map((i) => i.id));
+
+  const menu: MenuItemDto[] = available.map((i) => ({
+    id: i.id,
+    name: i.name,
+    description: i.description,
+    priceKobo: Number(i.priceKobo),
+    category: i.category,
+    isSpicy: i.isSpicy,
+    isPopular: i.isPopular,
+    optionGroups: groupsByItem.get(i.id) ?? [],
+  }));
 
   return { ...toRestaurantDto(row), menu };
+}
+
+/** Load topping groups + options for a set of menu items (two queries). */
+async function loadOptionGroups(
+  itemIds: string[],
+): Promise<Map<string, MenuOptionGroupDto[]>> {
+  const out = new Map<string, MenuOptionGroupDto[]>();
+  if (itemIds.length === 0) return out;
+  const db = getDb();
+
+  const groupRows = await db
+    .select()
+    .from(menuItemOptionGroups)
+    .where(inArray(menuItemOptionGroups.menuItemId, itemIds))
+    .orderBy(asc(menuItemOptionGroups.sortOrder), asc(menuItemOptionGroups.name));
+  if (groupRows.length === 0) return out;
+
+  const optionRows = await db
+    .select()
+    .from(menuItemOptions)
+    .where(
+      inArray(
+        menuItemOptions.groupId,
+        groupRows.map((g) => g.id),
+      ),
+    )
+    .orderBy(asc(menuItemOptions.sortOrder), asc(menuItemOptions.name));
+
+  const optionsByGroup = new Map<string, MenuOptionGroupDto["options"]>();
+  for (const o of optionRows) {
+    if (!o.isAvailable) continue;
+    const list = optionsByGroup.get(o.groupId) ?? [];
+    list.push({ id: o.id, name: o.name, priceKobo: Number(o.priceKobo) });
+    optionsByGroup.set(o.groupId, list);
+  }
+
+  for (const g of groupRows) {
+    const list = out.get(g.menuItemId) ?? [];
+    list.push({
+      id: g.id,
+      name: g.name,
+      minSelect: g.minSelect,
+      maxSelect: g.maxSelect,
+      options: optionsByGroup.get(g.id) ?? [],
+    });
+    out.set(g.menuItemId, list);
+  }
+  return out;
 }
 
 /** Every available menu item across listed merchants, flattened with its
@@ -168,6 +226,8 @@ export async function listAllMenuItems(): Promise<MenuItemSearchDto[]> {
       category: i.category,
       isSpicy: i.isSpicy,
       isPopular: i.isPopular,
+      // Groups are loaded through catalog.restaurant on the item page.
+      optionGroups: [],
       merchantId: m.id,
       merchantSlug: m.slug,
       merchantName: m.name,
