@@ -9,9 +9,10 @@ import {
   listRestaurants,
   nearestArea,
 } from "./queries/catalog";
-import { createOrder, listOrdersByUser } from "./queries/orders";
+import { createOrder, listOrdersByUser, confirmDelivery } from "./queries/orders";
 import {
   loginWithEmail,
+  loginWithFacebook,
   loginWithGoogle,
   registerWithEmail,
   requestOtp,
@@ -19,6 +20,22 @@ import {
   updateProfile,
   verifyOtp,
 } from "./queries/auth";
+import {
+  chargeSavedCard,
+  initializePaystack,
+  listCards,
+  listTransactions,
+  removeCard,
+  setDefaultCard,
+  verifyPaystack,
+} from "./queries/payments";
+import { env } from "./lib/env";
+import {
+  checkPromo,
+  ensureReferralCode,
+  listActivePromos,
+} from "./queries/promos";
+import { listMerchantReviews, submitReview } from "./queries/reviews";
 import {
   createAddress,
   deleteAddress,
@@ -88,6 +105,7 @@ const ordersRouter = createRouter({
         areaId: z.string().uuid(),
         merchantSlug: z.string().min(1).max(80),
         paymentMethod: z.enum(["cod", "paystack", "flutterwave"]),
+        promoCode: z.string().max(40).default(""),
         items: z
           .array(
             z.object({
@@ -107,6 +125,12 @@ const ordersRouter = createRouter({
 
   // Signed-in customers only — orders are private to the session identity.
   mine: protectedQuery.query(({ ctx }) => listOrdersByUser(ctx.user.id)),
+
+  // Customer closes the loop when the food arrives (settles COD, unlocks
+  // the review prompt).
+  confirmDelivery: protectedQuery
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(({ input, ctx }) => confirmDelivery(ctx.user.id, input.orderId)),
 });
 
 const authRouter = createRouter({
@@ -149,6 +173,11 @@ const authRouter = createRouter({
   google: publicQuery
     .input(z.object({ idToken: z.string().min(20).max(4096) }))
     .mutation(({ input }) => loginWithGoogle(input.idToken)),
+
+  // Facebook Login user access token (verified via debug_token)
+  facebook: publicQuery
+    .input(z.object({ accessToken: z.string().min(20).max(4096) }))
+    .mutation(({ input }) => loginWithFacebook(input.accessToken)),
 
   updateProfile: protectedQuery
     .input(
@@ -207,6 +236,110 @@ const notificationsRouter = createRouter({
   ),
 });
 
+const paymentsRouter = createRouter({
+  cards: protectedQuery.query(({ ctx }) => listCards(ctx.user.id)),
+
+  removeCard: protectedQuery
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(({ input, ctx }) => removeCard(ctx.user.id, input.id)),
+
+  setDefaultCard: protectedQuery
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(({ input, ctx }) => setDefaultCard(ctx.user.id, input.id)),
+
+  transactions: protectedQuery.query(({ ctx }) =>
+    listTransactions(ctx.user.id),
+  ),
+
+  // Gateway availability so checkout can enable/disable card options.
+  config: publicQuery.query(() => ({
+    paystackEnabled: !!env.paystackSecretKey,
+  })),
+
+  // Start a Paystack hosted checkout for an unpaid order. The client
+  // passes its origin so the gateway can redirect back into the app.
+  initialize: protectedQuery
+    .input(
+      z.object({
+        orderId: z.string().uuid(),
+        callbackBase: z.string().url().max(200),
+      }),
+    )
+    .mutation(({ input, ctx }) =>
+      initializePaystack({
+        userId: ctx.user.id,
+        orderId: input.orderId,
+        callbackBase: input.callbackBase,
+      }),
+    ),
+
+  // After the gateway redirects back: confirm the charge server-side.
+  verify: protectedQuery
+    .input(z.object({ reference: z.string().min(6).max(80) }))
+    .mutation(({ input, ctx }) => verifyPaystack(ctx.user.id, input.reference)),
+
+  // One-tap charge on a saved card.
+  chargeCard: protectedQuery
+    .input(
+      z.object({
+        cardId: z.string().uuid(),
+        orderId: z.string().uuid(),
+      }),
+    )
+    .mutation(({ input, ctx }) =>
+      chargeSavedCard({
+        userId: ctx.user.id,
+        cardId: input.cardId,
+        orderId: input.orderId,
+      }),
+    ),
+});
+
+const promosRouter = createRouter({
+  // Active store codes for the Promos page.
+  list: publicQuery.query(() => listActivePromos()),
+
+  // Estimate a code against the current cart (display only — the order
+  // mutation re-validates authoritatively).
+  check: protectedQuery
+    .input(
+      z.object({
+        code: z.string().min(3).max(40),
+        subtotalKobo: z.number().int().min(0),
+        deliveryFeeKobo: z.number().int().min(0),
+      }),
+    )
+    .query(({ input, ctx }) =>
+      checkPromo(ctx.user.id, input.code, input.subtotalKobo, input.deliveryFeeKobo),
+    ),
+
+  // Lazily mints the signed-in customer's referral code.
+  myReferral: protectedQuery.query(({ ctx }) => ensureReferralCode(ctx.user.id)),
+});
+
+const reviewsRouter = createRouter({
+  submit: protectedQuery
+    .input(
+      z.object({
+        orderId: z.string().uuid(),
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().max(500).default(""),
+      }),
+    )
+    .mutation(({ input, ctx }) =>
+      submitReview({
+        userId: ctx.user.id,
+        orderId: input.orderId,
+        rating: input.rating,
+        comment: input.comment,
+      }),
+    ),
+
+  forMerchant: publicQuery
+    .input(z.object({ slug: z.string().min(1).max(80) }))
+    .query(({ input }) => listMerchantReviews(input.slug)),
+});
+
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
   catalog: catalogRouter,
@@ -215,6 +348,9 @@ export const appRouter = createRouter({
   addresses: addressesRouter,
   favorites: favoritesRouter,
   notifications: notificationsRouter,
+  payments: paymentsRouter,
+  promos: promosRouter,
+  reviews: reviewsRouter,
 });
 
 export type AppRouter = typeof appRouter;
