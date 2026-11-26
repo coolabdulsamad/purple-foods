@@ -43,4 +43,16 @@ export const env = {
   // Google Identity Services client id. When absent, auth.google answers
   // PRECONDITION_FAILED and the client keeps email/phone sign-in in front.
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  // Facebook Login. auth.facebook verifies the user token with
+  // debug_token (app_id|app_secret as the app access token). Absent →
+  // PRECONDITION_FAILED so the client keeps the other methods in front.
+  facebookAppId: process.env.FACEBOOK_APP_ID ?? "",
+  facebookAppSecret: process.env.FACEBOOK_APP_SECRET ?? "",
+  // Paystack secret key (server-side only). Absent → card checkout
+  // answers PRECONDITION_FAILED and COD stays the working method.
+  paystackSecretKey: process.env.PAYSTACK_SECRET_KEY ?? "",
+  paystackPublicKey: process.env.VITE_PAYSTACK_PUBLIC_KEY ?? "",
+  // Public base URL of the app, used for the Paystack callback. Falls
+  // back to the request origin when unset.
+  appBaseUrl: process.env.APP_BASE_URL ?? "",
 };

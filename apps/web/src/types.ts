@@ -55,6 +55,8 @@ export interface CartLine {
   cutlery?: boolean
   allergy?: string
   note?: string
+  /** Dish photo path (e.g. /dishes/jollof.jpg) — absent on lines stored before photos shipped. */
+  photoUrl?: string | null
 }
 
 /** Unit price of a cart line: base + selected toppings. */
