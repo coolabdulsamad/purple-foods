@@ -250,14 +250,24 @@ export function TopBar() {
                 {initial}
               </Link>
             ) : (
-              <Link
-                to="/auth"
-                className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
-                  onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
-                }`}
-              >
-                Sign in
-              </Link>
+              <>
+                <Link
+                  to="/auth"
+                  className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
+                    onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
+                  }`}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/auth/signup"
+                  className={`hidden rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:block ${
+                    onDark ? 'bg-saffron text-plum-deep' : 'bg-royal text-lilac hover:bg-plum'
+                  }`}
+                >
+                  Sign up
+                </Link>
+              </>
             )}
           </div>
         </div>

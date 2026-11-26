@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
-import { StoreProvider, useStore } from './store'
+import { StoreProvider } from './store'
 import { BottomNav, Footer, TopBar } from './ui'
 import {
   AccountPage,
@@ -30,15 +30,10 @@ import {
 /** Full-screen flow pages render without the header / footer / bottom nav. */
 const CHROMELESS = ['/welcome', '/location', '/auth', '/auth/signup', '/order-success']
 
-/** First-run gate: onboarding (welcome → location → optional sign-in) comes
- *  before the storefront until the customer finishes or skips it. */
-function OnboardingGate() {
-  const { onboarded } = useStore()
-  const loc = useLocation()
-  const inFlow = CHROMELESS.some((p) => loc.pathname.startsWith(p))
-  if (!onboarded && !inFlow) return <Navigate to="/welcome" replace />
-  return null
-}
+// NOTE: there is deliberately no first-run gate. This is a website, not an
+// install-prompt app: guests land on the storefront Home page immediately,
+// can browse everything, pick their area from the top bar, and only sign in
+// if they want to (buttons in the top bar and on the Home hero).
 
 function Shell() {
   const loc = useLocation()
@@ -46,7 +41,6 @@ function Shell() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       {!chromeless && <TopBar />}
-      <OnboardingGate />
       <main className={chromeless ? 'flex-1' : 'flex-1 pb-24 md:pb-0'}>
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />

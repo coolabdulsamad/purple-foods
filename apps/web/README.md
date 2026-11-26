@@ -40,15 +40,25 @@ At production boot, `api/lib/migrate.ts` checks a `_pf_migrations` ledger:
 a fresh/empty database (e.g. a platform-provisioned Postgres that never saw
 the Neon flow) is migrated and seeded automatically; a database that already
 has the schema is baselined and untouched. Failures are logged, never fatal —
-`GET /api/health` reports `{ ok, db, detail }` for instant diagnosis.
+`GET /api/health` reports `{ ok, db, host, detail }` for instant diagnosis.
+
+**Which database wins:** the app prefers `PF_DATABASE_URL` over `DATABASE_URL`.
+A deployed container may receive a platform-injected `DATABASE_URL` pointing at
+its own (empty) provisioned database, and process env beats `.env` — so the
+Neon connection string is pinned as `PF_DATABASE_URL` in `.env` (which ships in
+the deploy zip) and always takes precedence. `GET /api/health`'s `host` field
+shows which database the server is actually talking to.
 
 ## Pages
 
-22 routes behind an onboarding gate (`/welcome` intro → `/location` area +
-street → `/auth` sign-in, skippable): Home, Search, Restaurants, Restaurant
-detail, Item detail, Category, Cart, Checkout, Order success, Orders, Order
-tracking, Account, Edit profile, Addresses, Favorites, Promos, Notifications,
-Help — plus the 4 chromeless onboarding/auth pages.
+22 routes, open to guests by default — this is a website: visitors land on the
+storefront Home page, browse everything, pick their area from the top bar, and
+sign in only if they want to (Sign in / Sign up in the top bar and on the Home
+hero; guest checkout works without an account). Home, Search, Restaurants,
+Restaurant detail, Item detail, Category, Cart, Checkout, Order success,
+Orders, Order tracking, Account, Edit profile, Addresses, Favorites, Promos,
+Notifications, Help — plus `/welcome` intro, `/location` area picker and the
+auth pages, still reachable directly but never forced.
 
 ## Auth (phone OTP + email + Google)
 

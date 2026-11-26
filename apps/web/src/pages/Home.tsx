@@ -72,6 +72,23 @@ export default function HomePage() {
             <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
             <span className="text-sm font-medium text-plum/50">Search amala, suya, shawarma…</span>
           </button>
+          {!session && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <Link
+                to="/auth/signup"
+                className="rounded-full bg-saffron px-5 py-2.5 text-sm font-bold text-plum-deep transition-transform active:scale-95"
+              >
+                Create account
+              </Link>
+              <Link
+                to="/auth"
+                className="rounded-full border border-lilac/30 px-5 py-2.5 text-sm font-bold text-lilac transition-colors hover:bg-lilac/10"
+              >
+                Sign in
+              </Link>
+              <span className="text-xs text-lilac/60">or order as a guest — no account needed</span>
+            </div>
+          )}
           <div className="mt-10 hidden gap-10 md:flex">
             {[
               [`${restaurantsQuery.data?.length ?? '…'}`, 'kitchens live'],
