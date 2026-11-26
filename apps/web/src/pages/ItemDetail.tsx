@@ -47,18 +47,19 @@ export default function ItemDetailPage() {
 
   return (
     <div className="pb-8">
-      <div className="relative">
-        <DishArt seed={item.id} className="h-64 w-full" />
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="absolute left-4 top-16 rounded-full bg-card/95 p-2.5 text-plum shadow-md transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-      </div>
+      <div className="mx-auto w-full max-w-5xl md:grid md:grid-cols-2 md:items-start md:gap-10 md:px-8 md:pt-24">
+        <div className="relative">
+          <DishArt seed={item.id} className="h-64 w-full md:h-[420px] md:rounded-3xl" />
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+            className="absolute left-4 top-16 rounded-full bg-card/95 p-2.5 text-plum shadow-md transition-transform duration-150 active:scale-95 md:top-4"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
 
-      <div className="px-4 pt-5">
+        <div className="px-4 pt-5 md:px-0 md:pt-0">
         <div className="flex items-start justify-between gap-3">
           <h1 className="font-display text-2xl font-extrabold leading-tight tracking-tight text-plum">{item.name}</h1>
           <p className="mt-1 shrink-0 font-mono text-lg font-bold text-plum">{fmt(item.priceKobo)}</p>
@@ -116,12 +117,13 @@ export default function ItemDetailPage() {
           <ShoppingBag className="h-4 w-4" aria-hidden="true" />
           Add {qty} to cart · {fmt(item.priceKobo * qty)}
         </button>
+        </div>
       </div>
 
       {count > 0 && (
         <Link
           to="/cart"
-          className="fixed bottom-[72px] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-full bg-plum px-5 py-3.5 text-sm font-bold text-lilac shadow-xl transition-transform duration-150 active:scale-[0.98]"
+          className="fixed bottom-[72px] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-[448px] -translate-x-1/2 items-center justify-between rounded-full bg-plum px-5 py-3.5 text-sm font-bold text-lilac shadow-xl transition-transform duration-150 active:scale-[0.98] md:bottom-8 md:left-auto md:right-8 md:w-auto md:min-w-[320px] md:translate-x-0"
         >
           <span>View cart · {count} item{count > 1 ? 's' : ''}</span>
           <span className="font-mono">{fmt(totalKobo)}</span>

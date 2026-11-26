@@ -21,7 +21,7 @@ export default function AccountPage() {
 
   if (!session) {
     return (
-      <div className="px-4 pt-20">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
         <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Account</h1>
         <div className="relative mt-4 overflow-hidden rounded-3xl bg-plum-deep p-5 text-lilac">
           <Grain />
@@ -39,7 +39,7 @@ export default function AccountPage() {
             Sign in or create an account
           </Link>
         </div>
-        <section className="mt-4 space-y-2 pb-4">
+        <section className="mt-4 grid gap-2 pb-4 sm:grid-cols-2">
           <MenuRow to="/promos" icon={Tag} label="Promos & referrals" />
           <MenuRow to="/help" icon={LifeBuoy} label="Help & support" />
         </section>
@@ -50,7 +50,7 @@ export default function AccountPage() {
   const initial = (session.user.name ?? session.user.email ?? session.user.phone ?? 'P').charAt(0).toUpperCase()
 
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Account</h1>
 
       <div className="mt-4 flex items-center gap-3 rounded-3xl border border-mint bg-mint-soft p-4">
@@ -78,7 +78,7 @@ export default function AccountPage() {
         </Link>
       </div>
 
-      <section className="mt-4 space-y-2">
+      <section className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <MenuRow to="/account/edit" icon={User} label="Edit profile" sub="Name and phone number" />
         <MenuRow to="/account/addresses" icon={MapPin} label="Saved addresses" sub="Home, work, anywhere" />
         <MenuRow to="/favorites" icon={Heart} label="Favorites" sub="Your saved restaurants" />
@@ -89,7 +89,7 @@ export default function AccountPage() {
 
       <button
         onClick={handleSignOut}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-destructive/30 bg-card py-3.5 text-sm font-bold text-destructive transition-transform duration-150 active:scale-[0.98]"
+        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-destructive/30 bg-card py-3.5 text-sm font-bold text-destructive transition-transform duration-150 active:scale-[0.98] sm:max-w-xs"
       >
         <LogOut className="h-4 w-4" aria-hidden="true" />
         Sign out

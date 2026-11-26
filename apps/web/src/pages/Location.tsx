@@ -51,8 +51,9 @@ export default function LocationPage() {
   }
 
   return (
-    <div className="relative min-h-dvh bg-plum-deep px-5 pb-10 pt-14 text-lilac">
+    <div className="relative min-h-dvh bg-plum-deep text-lilac">
       <Grain />
+      <div className="mx-auto w-full max-w-md px-5 pb-10 pt-14 md:max-w-lg md:pt-24">
       <Mono className="text-saffron">[STEP 1 OF 2 · LOCATION]</Mono>
       <h1 className="mt-3 font-display text-3xl font-extrabold leading-[1.05] tracking-tight">
         Where should we
@@ -122,6 +123,7 @@ export default function LocationPage() {
         Continue
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </button>
+      </div>
     </div>
   )
 }

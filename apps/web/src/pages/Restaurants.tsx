@@ -28,8 +28,8 @@ export default function RestaurantsPage() {
   }, [restaurantsQuery.data, cat, sort])
 
   return (
-    <div className="px-4 pt-20">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">All restaurants</h1>
+    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">All restaurants</h1>
       <Mono className="mt-1 text-muted-foreground">[{filtered.length} SPOTS · ABUJA]</Mono>
 
       <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Cuisine categories">
@@ -83,7 +83,7 @@ export default function RestaurantsPage() {
           </button>
         </div>
       ) : (
-        <ul className="mt-4 space-y-4">
+        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r) => (
             <li key={r.id}>
               <Link

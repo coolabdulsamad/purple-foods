@@ -64,8 +64,9 @@ export default function SignUpPage() {
   )
 
   return (
-    <div className="relative min-h-dvh bg-plum-deep px-5 pb-10 pt-8 text-lilac">
+    <div className="relative min-h-dvh bg-plum-deep text-lilac">
       <Grain />
+      <div className="mx-auto w-full max-w-md px-5 pb-10 pt-8 md:pt-16">
       <button
         onClick={() => navigate(-1)}
         aria-label="Go back"
@@ -113,6 +114,7 @@ export default function SignUpPage() {
       <p className="mt-5 text-center text-[11px] leading-relaxed text-lilac/50">
         By continuing you agree to the Purple Foods terms. A Smadsoft Technology Limited product.
       </p>
+      </div>
     </div>
   )
 }

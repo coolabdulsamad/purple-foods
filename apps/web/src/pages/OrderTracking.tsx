@@ -44,7 +44,7 @@ export default function OrderTrackingPage() {
   const live = o.status !== 'delivered' && o.status !== 'cancelled'
 
   return (
-    <div className="px-4 pb-8 pt-20">
+    <div className="mx-auto w-full max-w-3xl px-4 pb-8 pt-20 md:pt-24">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}

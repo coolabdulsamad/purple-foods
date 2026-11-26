@@ -24,9 +24,9 @@ export default function SearchPage() {
   }, [needle, itemsQuery.data, restaurantsQuery.data])
 
   return (
-    <div className="px-4 pt-20">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Search</h1>
-      <label className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm focus-within:border-royal">
+    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">Search</h1>
+      <label className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3.5 shadow-sm focus-within:border-royal md:max-w-2xl">
         <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
         <span className="sr-only">Search dishes and restaurants</span>
         <input
@@ -62,7 +62,7 @@ export default function SearchPage() {
           {results.restaurants.length > 0 && (
             <section className="mt-6">
               <Mono className="text-muted-foreground">[RESTAURANTS]</Mono>
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {results.restaurants.map((r) => (
                   <li key={r.id}>
                     <Link
@@ -87,7 +87,7 @@ export default function SearchPage() {
           {results.items.length > 0 && (
             <section className="mt-6">
               <Mono className="text-muted-foreground">[DISHES]</Mono>
-              <ul className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
+              <ul className="mt-2 max-w-3xl divide-y divide-border rounded-2xl border border-border bg-card">
                 {results.items.map((i) => (
                   <li key={i.id}>
                     <Link to={`/item/${i.id}`} className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-lilac/60">
