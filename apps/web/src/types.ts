@@ -7,6 +7,8 @@ export type {
   CityDto,
   MenuItemDto,
   MenuItemSearchDto,
+  MenuOptionDto,
+  MenuOptionGroupDto,
   NearestAreaDto,
   NotificationDto,
   OrderDto,
@@ -31,14 +33,33 @@ export interface CartRestaurant {
   deliveryFeeKobo: number
 }
 
+/** A topping the customer picked on the item page. */
+export interface CartOptionSelection {
+  groupId: string
+  groupName: string
+  optionId: string
+  name: string
+  priceKobo: number
+}
+
 export interface CartLine {
   key: string
   restaurant: CartRestaurant
   itemId: string
   name: string
+  /** Base menu price — toppings are added on top via `options`. */
   priceKobo: number
   qty: number
+  /** Optional on lines stored before item customization shipped. */
+  options?: CartOptionSelection[]
+  cutlery?: boolean
+  allergy?: string
+  note?: string
 }
+
+/** Unit price of a cart line: base + selected toppings. */
+export const cartLineUnitKobo = (l: CartLine): number =>
+  l.priceKobo + (l.options ?? []).reduce((n, o) => n + o.priceKobo, 0)
 
 /** Delivery/profile details the customer typed — kept on-device until
  *  checkout sends them to the API. */
