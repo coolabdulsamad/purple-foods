@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Banknote, CreditCard, Loader2, MapPin, ShieldCheck, ShoppingBag, Wallet } from 'lucide-react'
+import { Banknote, CreditCard, Loader2, Lock, LogIn, MapPin, ShieldCheck, ShoppingBag, UserPlus, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { Mono, fmt } from '../ui'
+import { cartLineUnitKobo } from '../types'
+import { DishArt, Mono, fmt } from '../ui'
 
 const PAYMENTS = [
   { id: 'paystack' as const, label: 'Card via Paystack', desc: 'Secured handoff — live in the payments phase', icon: CreditCard },
@@ -66,6 +67,57 @@ export default function CheckoutPage() {
     )
   }
 
+  // Checkout requires an account: orders, tracking and history are pinned
+  // to a signed-in identity. The cart lives on-device, so it survives the
+  // sign-in round-trip and is waiting when the customer lands back here.
+  if (!session) {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 pt-24 md:pt-32">
+        <div className="rounded-3xl border border-border bg-card p-6 text-center shadow-sm">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-lilac">
+            <Lock className="h-6 w-6 text-royal" aria-hidden="true" />
+          </span>
+          <h1 className="mt-4 font-display text-2xl font-extrabold tracking-tight text-plum">Sign in to place your order</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Your cart ({lines.reduce((n, l) => n + l.qty, 0)} item{lines.length > 1 || lines[0]?.qty > 1 ? 's' : ''} · {fmt(totalKobo)}) is saved on this device — it will be right here when you're back.
+          </p>
+          <Link
+            to="/auth?next=/checkout"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-plum py-3.5 text-sm font-extrabold text-lilac transition-transform duration-150 active:scale-[0.98]"
+          >
+            <LogIn className="h-4 w-4" aria-hidden="true" />
+            I have an account — sign in
+          </Link>
+          <Link
+            to="/auth/signup?next=/checkout"
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-3.5 text-sm font-extrabold text-plum-deep transition-transform duration-150 active:scale-[0.98]"
+          >
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            I'm new — create my account
+          </Link>
+          <Link to="/cart" className="mt-4 inline-block text-xs font-bold text-royal underline underline-offset-2">
+            Back to cart
+          </Link>
+        </div>
+
+        <ul className="mt-4 space-y-2 rounded-3xl border border-border bg-card p-4">
+          {lines.map((l) => (
+            <li key={l.key} className="flex items-center gap-3">
+              <DishArt seed={l.itemId} className="h-10 w-10 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-plum">{l.qty}× {l.name}</p>
+                {(l.options ?? []).length > 0 && (
+                  <p className="truncate text-[11px] text-muted-foreground">+ {(l.options ?? []).map((o) => o.name).join(', ')}</p>
+                )}
+              </div>
+              <span className="font-mono text-xs font-bold text-plum">{fmt(cartLineUnitKobo(l) * l.qty)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
   const phonePinned = !!session?.user.phone
 
   const applyAddress = (id: string) => {
@@ -93,7 +145,14 @@ export default function CheckoutPage() {
       areaId,
       merchantSlug: cartRestaurant.slug,
       paymentMethod: payment,
-      items: lines.map((l) => ({ menuItemId: l.itemId, quantity: l.qty })),
+      items: lines.map((l) => ({
+        menuItemId: l.itemId,
+        quantity: l.qty,
+        optionIds: (l.options ?? []).map((o) => o.optionId),
+        note: l.note ?? '',
+        allergy: l.allergy ?? '',
+        cutlery: l.cutlery ?? false,
+      })),
     })
   }
 
@@ -151,13 +210,9 @@ export default function CheckoutPage() {
               <ShieldCheck className="h-3 w-3 text-mint" aria-hidden="true" />
               Signed in — your order is pinned to this number.
             </p>
-          ) : session ? (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Add your number once — it becomes your delivery contact and gets saved to your account.
-            </p>
           ) : (
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Tip: <Link to="/auth" className="font-bold text-royal underline underline-offset-2">sign in</Link> to track every order automatically.
+              Add your number once — it becomes your delivery contact and gets saved to your account.
             </p>
           )}
           {errors.phone && <p className="mt-1 text-xs font-semibold text-destructive">{errors.phone}</p>}
