@@ -36,7 +36,7 @@ export default function WelcomePage() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-plum-deep text-lilac">
       <Grain />
-      <div className="px-5 pt-14">
+      <div className="mx-auto w-full max-w-md px-5 pt-14 md:pt-20">
         <Mono className="text-saffron">[PURPLE FOODS · ABUJA]</Mono>
       </div>
       <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
@@ -52,7 +52,7 @@ export default function WelcomePage() {
           <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/75">{slide.body}</p>
         </div>
       </div>
-      <div className="px-5 pb-10">
+      <div className="mx-auto w-full max-w-md px-5 pb-10">
         <div className="mb-5 flex justify-center gap-1.5" role="tablist" aria-label="Onboarding progress">
           {SLIDES.map((_, j) => (
             <button

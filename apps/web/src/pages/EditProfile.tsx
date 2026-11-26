@@ -40,7 +40,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-xl px-4 pt-20 md:pt-24">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}

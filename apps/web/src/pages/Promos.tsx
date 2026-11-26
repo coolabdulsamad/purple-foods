@@ -40,7 +40,7 @@ export default function PromosPage() {
   }
 
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
@@ -55,7 +55,7 @@ export default function PromosPage() {
         </div>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
         {PROMOS.map((p) => (
           <article key={p.title} className="relative overflow-hidden rounded-2xl bg-plum-deep p-4 text-lilac">
             <Grain />

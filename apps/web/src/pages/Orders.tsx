@@ -30,8 +30,8 @@ export default function OrdersPage() {
   const orders = ordersQuery.data ?? []
 
   return (
-    <div className="px-4 pt-20">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Orders</h1>
+    <div className="mx-auto w-full max-w-4xl px-4 pt-20 md:px-8 md:pt-24">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">Orders</h1>
       <Mono className="mt-1 text-muted-foreground">[LIVE FROM PURPLE FOODS DB · AUTO-REFRESH 15S]</Mono>
       {ordersQuery.isLoading ? (
         <LoadingBlock label="Fetching your orders…" />
@@ -47,7 +47,7 @@ export default function OrdersPage() {
           </Link>
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-4 grid gap-3 lg:grid-cols-2">
           {orders.map((o) => {
             const cancelled = o.status === 'cancelled'
             return (

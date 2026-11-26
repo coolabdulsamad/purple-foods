@@ -34,7 +34,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
@@ -63,7 +63,7 @@ export default function FavoritesPage() {
           </Link>
         </div>
       ) : (
-        <ul className="mt-5 space-y-4">
+        <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(favoritesQuery.data ?? []).map((r) => (
             <li key={r.id} className="relative">
               <Link

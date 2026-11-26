@@ -19,7 +19,7 @@ export default function CartPage() {
     )
   }
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Cart</h1>
         <button
@@ -34,7 +34,8 @@ export default function CartPage() {
         </button>
       </div>
       <Mono className="mt-1 text-muted-foreground">[{(cartRestaurant?.name ?? '').toUpperCase()}]</Mono>
-      <ul className="mt-4 space-y-3">
+      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-8">
+      <ul className="mt-4 space-y-3 lg:mt-2">
         {lines.map((l) => (
           <li key={l.key} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
             <DishArt seed={l.itemId} className="h-14 w-14 shrink-0 rounded-xl" />
@@ -55,7 +56,8 @@ export default function CartPage() {
           </li>
         ))}
       </ul>
-      <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+      <div className="lg:sticky lg:top-24">
+      <div className="mt-5 rounded-2xl border border-border bg-card p-4 lg:mt-2">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Subtotal</span>
           <span className="font-mono">{fmt(subtotalKobo)}</span>
@@ -76,6 +78,8 @@ export default function CartPage() {
         Checkout · {fmt(totalKobo)}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
+      </div>
+      </div>
     </div>
   )
 }
