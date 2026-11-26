@@ -4,10 +4,13 @@ export type {
   AddressDto,
   AreaDto,
   AuthResult,
+  CityDto,
   MenuItemDto,
   MenuItemSearchDto,
+  NearestAreaDto,
   NotificationDto,
   OrderDto,
+  OrderStatus,
   RestaurantDetailDto,
   RestaurantDto,
   SessionUserDto,
@@ -49,6 +52,8 @@ export interface Profile {
 export interface SelectedArea {
   id: string
   name: string
+  /** Optional for zones stored before the multi-city update. */
+  cityName?: string
 }
 
 export type AddableItem = MenuItemDto

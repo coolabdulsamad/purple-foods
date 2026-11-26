@@ -53,3 +53,23 @@
     scrollbar-width: none;
   }
 }
+
+/* Map pins + rider pulse (Leaflet divIcons in src/lib/map.ts) */
+@keyframes pf-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.pf-map-pin {
+  background: transparent;
+  border: none;
+}
+.leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
