@@ -504,6 +504,128 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
   return createSessionFor(user);
 }
 
+// ── Facebook sign-in ───────────────────────────────────────────────
+// The client completes Facebook Login (JS SDK) and posts the user
+// access token; we validate it with debug_token (app access token =
+// app_id|app_secret) before trusting /me claims.
+
+interface FacebookDebugData {
+  data?: { app_id?: string; is_valid?: boolean };
+}
+
+interface FacebookProfile {
+  id: string;
+  name?: string;
+  email?: string;
+  picture?: { data?: { url?: string } };
+}
+
+export async function loginWithFacebook(
+  accessToken: string,
+): Promise<AuthResult> {
+  if (!env.facebookAppId || !env.facebookAppSecret) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Facebook sign-in is being connected — use Google, email or your phone number for now.",
+    });
+  }
+
+  const appToken = `${env.facebookAppId}|${env.facebookAppSecret}`;
+  try {
+    const debugRes = await fetch(
+      `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(appToken)}`,
+    );
+    const debug = (await debugRes.json()) as FacebookDebugData;
+    if (!debugRes.ok || !debug.data?.is_valid || debug.data.app_id !== env.facebookAppId) {
+      throw new Error("invalid token");
+    }
+  } catch {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Facebook sign-in failed verification — try again.",
+    });
+  }
+
+  let profile: FacebookProfile;
+  try {
+    const meRes = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`,
+    );
+    if (!meRes.ok) throw new Error(`graph ${meRes.status}`);
+    profile = (await meRes.json()) as FacebookProfile;
+  } catch {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Could not read your Facebook profile — try again.",
+    });
+  }
+  if (!profile.id) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Facebook sign-in failed — try again.",
+    });
+  }
+
+  const db = getDb();
+  const email = profile.email?.toLowerCase() ?? null;
+  const picture = profile.picture?.data?.url ?? null;
+
+  const [byFb] = await db
+    .select()
+    .from(users)
+    .where(eq(users.facebookId, profile.id))
+    .limit(1);
+  let user = byFb;
+
+  if (!user && email) {
+    // Link Facebook to an existing email account.
+    const [byEmail] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = ${email}`)
+      .limit(1);
+    if (byEmail) {
+      const updated = await db
+        .update(users)
+        .set({
+          facebookId: profile.id,
+          avatarUrl: byEmail.avatarUrl ?? picture,
+          name: byEmail.name ?? profile.name ?? null,
+          lastSeenAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, byEmail.id))
+        .returning();
+      user = updated[0]!;
+    }
+  }
+
+  if (!user) {
+    const created = await db
+      .insert(users)
+      .values({
+        email,
+        name: profile.name ?? null,
+        facebookId: profile.id,
+        avatarUrl: picture,
+        role: "customer",
+        lastSeenAt: new Date(),
+      })
+      .returning();
+    user = created[0]!;
+    await sendWelcomeNotification(user.id);
+  } else {
+    await db
+      .update(users)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(users.id, user.id));
+  }
+
+  assertActive(user);
+  return createSessionFor(user);
+}
+
 // ── Profile ────────────────────────────────────────────────────────
 
 export async function updateProfile(
