@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import {
-  Bell, ChevronRight, Heart, LifeBuoy, LogOut, MapPin, Pencil, ShieldCheck, Tag, User,
+  Bell, ChevronRight, CreditCard, Heart, LifeBuoy, LogOut, MapPin, Pencil, ReceiptText, ShieldCheck, Tag, User,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
@@ -81,6 +81,8 @@ export default function AccountPage() {
       <section className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <MenuRow to="/account/edit" icon={User} label="Edit profile" sub="Name and phone number" />
         <MenuRow to="/account/addresses" icon={MapPin} label="Saved addresses" sub="Home, work, anywhere" />
+        <MenuRow to="/account/payments" icon={CreditCard} label="Payment cards" sub="Your saved cards" />
+        <MenuRow to="/account/transactions" icon={ReceiptText} label="Transactions" sub="Payment history" />
         <MenuRow to="/favorites" icon={Heart} label="Favorites" sub="Your saved restaurants" />
         <MenuRow to="/notifications" icon={Bell} label="Notifications" badge={unread} />
         <MenuRow to="/promos" icon={Tag} label="Promos & referrals" />
