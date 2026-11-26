@@ -121,6 +121,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               itemId: item.id,
               name: item.name,
               priceKobo: item.priceKobo,
+              photoUrl: item.photoUrl ?? null,
               qty,
               options: config?.options ?? [],
               cutlery: config?.cutlery ?? false,
