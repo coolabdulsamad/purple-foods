@@ -53,29 +53,43 @@ export default function HomePage() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-plum-deep px-4 pb-8 pt-20 text-lilac">
+      <section className="relative overflow-hidden bg-plum-deep text-lilac">
         <Grain />
-        <Mono className="text-saffron">[ABUJA · {(area?.name ?? 'ABUJA').toUpperCase()}]</Mono>
-        <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.02] tracking-tight">
-          {firstName ? `${greeting}, ${firstName}.` : 'Hungry?'}
-          <br />
-          Abuja is <span className="text-saffron">served hot.</span>
-        </h1>
-        <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/80">
-          Restaurants, grills and bukas around you — tracked from flame to your doorstep.
-        </p>
-        <button
-          onClick={() => navigate('/search')}
-          className="mt-5 flex w-full items-center gap-2 rounded-2xl bg-lilac px-4 py-3 text-left text-plum shadow-lg"
-        >
-          <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
-          <span className="text-sm font-medium text-plum/50">Search amala, suya, shawarma…</span>
-        </button>
+        <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-24 md:px-8 md:pb-16 md:pt-36">
+          <Mono className="text-saffron">[ABUJA · {(area?.name ?? 'ABUJA').toUpperCase()}]</Mono>
+          <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.02] tracking-tight md:text-6xl">
+            {firstName ? `${greeting}, ${firstName}.` : 'Hungry?'}
+            <br />
+            Abuja is <span className="text-saffron">served hot.</span>
+          </h1>
+          <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/80 md:max-w-[46ch] md:text-base">
+            Restaurants, grills and bukas around you — tracked from flame to your doorstep.
+          </p>
+          <button
+            onClick={() => navigate('/search')}
+            className="mt-5 flex w-full items-center gap-2 rounded-2xl bg-lilac px-4 py-3 text-left text-plum shadow-lg md:max-w-xl md:py-4"
+          >
+            <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
+            <span className="text-sm font-medium text-plum/50">Search amala, suya, shawarma…</span>
+          </button>
+          <div className="mt-10 hidden gap-10 md:flex">
+            {[
+              [`${restaurantsQuery.data?.length ?? '…'}`, 'kitchens live'],
+              ['12-min', 'warmth SLA'],
+              ['₦0', 'first delivery fee'],
+            ].map(([v, l]) => (
+              <div key={l}>
+                <p className="font-display text-3xl font-extrabold text-saffron">{v}</p>
+                <Mono className="mt-1 block text-lilac/60">[{l.toUpperCase()}]</Mono>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <Marquee items={['Free delivery on first order', 'Invite friends — earn ₦1,000', 'Suya nights till 2am', 'PurpleMart groceries loading']} />
 
-      <div className="no-scrollbar mt-5 flex gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Cuisine categories">
+      <div className="no-scrollbar mx-auto mt-5 flex w-full max-w-7xl gap-2 overflow-x-auto px-4 pb-1 md:flex-wrap md:px-8" role="tablist" aria-label="Cuisine categories">
         {categories.map((c) => (
           <button
             key={c}
@@ -91,9 +105,9 @@ export default function HomePage() {
         ))}
       </div>
 
-      <div className="no-scrollbar mt-5 flex gap-3 overflow-x-auto px-4 pb-2 pt-1">
+      <div className="no-scrollbar mx-auto mt-5 flex w-full max-w-7xl gap-3 overflow-x-auto px-4 pb-2 pt-1 md:grid md:grid-cols-3 md:px-8">
         {promos.map((p) => (
-          <article key={p.title} className={`flex w-[78%] shrink-0 flex-col rounded-2xl p-4 shadow-md transition-transform duration-200 ${p.rotate} ${p.bg ?? 'bg-royal text-lilac'}`}>
+          <article key={p.title} className={`flex w-[78%] shrink-0 flex-col rounded-2xl p-4 shadow-md transition-transform duration-200 md:w-auto md:p-5 ${p.rotate} ${p.bg ?? 'bg-royal text-lilac'}`}>
             <h2 className="font-display text-lg font-extrabold leading-tight tracking-tight">{p.title}</h2>
             <p className="mt-1 text-xs leading-relaxed opacity-85">{p.body}</p>
             <button
@@ -107,7 +121,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      <section id="feed" className="mt-4 px-4">
+      <section id="feed" className="mx-auto mt-4 w-full max-w-7xl px-4 md:px-8">
         <div className="flex items-baseline justify-between">
           <h2 className="font-display text-xl font-extrabold tracking-tight text-plum">
             {cat === 'All' ? 'Near you' : cat}
@@ -129,7 +143,7 @@ export default function HomePage() {
             </button>
           </div>
         ) : (
-          <ul className="mt-3 space-y-4">
+          <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((r) => (
               <li key={r.id}>
                 <Link

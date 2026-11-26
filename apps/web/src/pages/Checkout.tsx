@@ -98,10 +98,12 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="px-4 pt-20">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Checkout</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 pt-20 md:px-8 md:pt-24">
+      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">Checkout</h1>
       <Mono className="mt-1 text-muted-foreground">[DELIVERY DETAILS]</Mono>
 
+      <div className="lg:mt-2 lg:grid lg:grid-cols-[1fr_400px] lg:items-start lg:gap-10">
+      <div>
       {(addressesQuery.data?.length ?? 0) > 0 && (
         <div className="mt-4">
           <p className="text-xs font-bold text-plum">Saved addresses</p>
@@ -196,8 +198,9 @@ export default function CheckoutPage() {
           />
         </div>
       </div>
-
-      <h2 className="mt-6 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-royal">Payment</h2>
+      </div>
+      <div className="lg:sticky lg:top-24">
+      <h2 className="mt-6 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-royal lg:mt-2">Payment</h2>
       <div className="mt-2 space-y-2" role="radiogroup" aria-label="Payment method">
         {PAYMENTS.map((p) => (
           <button
@@ -245,6 +248,8 @@ export default function CheckoutPage() {
       <p className="mt-3 pb-4 text-center text-[11px] leading-relaxed text-muted-foreground">
         Orders are written to the live Purple Foods database. Card gateways switch on in the payments phase; cash on delivery works today.
       </p>
+      </div>
+      </div>
     </div>
   )
 }

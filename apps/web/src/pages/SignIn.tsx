@@ -68,8 +68,9 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="relative min-h-dvh bg-plum-deep px-5 pb-10 pt-14 text-lilac">
+    <div className="relative min-h-dvh bg-plum-deep text-lilac">
       <Grain />
+      <div className="mx-auto w-full max-w-md px-5 pb-10 pt-14 md:pt-24">
       <Mono className="text-saffron">[STEP 2 OF 2 · ACCOUNT]</Mono>
       <h1 className="mt-3 font-display text-3xl font-extrabold leading-[1.05] tracking-tight">
         Welcome <span className="text-saffron">back.</span>
@@ -207,6 +208,7 @@ export default function SignInPage() {
       >
         Skip for now — browse first
       </button>
+      </div>
     </div>
   )
 }

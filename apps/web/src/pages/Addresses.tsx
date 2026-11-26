@@ -71,7 +71,7 @@ export default function AddressesPage() {
   const inputCls = 'mt-1 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-royal'
 
   return (
-    <div className="px-4 pt-20">
+    <div className="mx-auto w-full max-w-3xl px-4 pt-20 md:px-8 md:pt-24">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
@@ -178,7 +178,7 @@ export default function AddressesPage() {
           </button>
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {(addressesQuery.data ?? []).map((a) => (
             <li key={a.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex items-center gap-2">
