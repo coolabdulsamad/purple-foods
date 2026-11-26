@@ -61,6 +61,9 @@ export interface RestaurantDto {
   rating: number;
   reviewCount: number;
   isOpen: boolean;
+  /** Branding (0010): signature-dish cover photo + logo badge. */
+  coverUrl: string | null;
+  logoUrl: string | null;
 }
 
 export interface MenuOptionDto {
