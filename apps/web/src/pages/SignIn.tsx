@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { KeyRound, Loader2, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
@@ -10,9 +10,16 @@ import type { AuthResult } from '../types'
 
 type Method = 'email' | 'phone'
 
+/** Only same-app paths are honored (blocks open redirects). */
+function safeNext(raw: string | null): string | null {
+  return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : null
+}
+
 export default function SignInPage() {
   const { setSession, completeOnboarding } = useStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = safeNext(searchParams.get('next'))
   const [method, setMethod] = useState<Method>('email')
 
   // Email + password
@@ -28,7 +35,7 @@ export default function SignInPage() {
     setSession({ token: r.token, expiresAt: r.expiresAt, user: r.user })
     completeOnboarding()
     toast.success('Signed in', { description: `Welcome back${r.user.name ? `, ${r.user.name}` : ''}.` })
-    navigate('/', { replace: true })
+    navigate(next ?? '/', { replace: true })
   }
 
   const login = trpc.auth.loginEmail.useMutation({
@@ -193,7 +200,7 @@ export default function SignInPage() {
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           New here?{' '}
-          <Link to="/auth/signup" className="font-bold text-royal underline underline-offset-2">
+          <Link to={`/auth/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-bold text-royal underline underline-offset-2">
             Create an account
           </Link>
         </p>
