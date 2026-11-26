@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { ChevronDown, Home, MapPin, Minus, Plus, ReceiptText, ShoppingBag, User } from 'lucide-react'
+import { Bell, ChevronDown, Home, Loader2, MapPin, Minus, Plus, ReceiptText, Search, ShoppingBag, Star, User, WifiOff } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from './store'
 import type { MenuItemDto, RestaurantDto } from './types'
@@ -79,6 +79,36 @@ export function Mono({ children, className = '' }: { children: ReactNode; classN
   return <span className={`font-mono text-[11px] font-medium uppercase tracking-[0.14em] ${className}`}>{children}</span>
 }
 
+export function Rating({ value }: { value: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <Star className="h-3 w-3 fill-saffron text-saffron" aria-hidden="true" />
+      {value.toFixed(1)}
+    </span>
+  )
+}
+
+export function LoadingBlock({ label }: { label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground" role="status">
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      <span className="text-xs font-semibold">{label}</span>
+    </div>
+  )
+}
+
+export function ErrorBlock({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mx-4 mt-6 rounded-2xl border border-dashed border-border p-8 text-center">
+      <WifiOff className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+      <p className="mt-2 text-sm font-semibold text-plum">{message}</p>
+      <button onClick={onRetry} className="mt-3 rounded-full bg-plum px-4 py-2 text-xs font-bold text-lilac active:scale-95">
+        Retry
+      </button>
+    </div>
+  )
+}
+
 function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { area, setArea } = useStore()
   const areasQuery = trpc.catalog.areas.useQuery(undefined, { enabled: open })
@@ -120,8 +150,13 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 export function TopBar() {
-  const { area, setArea } = useStore()
+  const { area, setArea, session } = useStore()
   const areasQuery = trpc.catalog.areas.useQuery()
+  const notificationsQuery = trpc.notifications.list.useQuery(undefined, {
+    enabled: !!session,
+    refetchInterval: 30000,
+  })
+  const unread = (notificationsQuery.data ?? []).filter((n) => !n.readAt).length
   // Default to the first live area until the customer picks one, and
   // re-sync a stored area's name from the API (names can change server-side).
   useEffect(() => {
@@ -160,8 +195,22 @@ export function TopBar() {
             {area?.name ?? 'Abuja'}
             <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
           </button>
-          <Link to="/" className="font-display text-base font-extrabold tracking-tight">
-            Purple<span className={onDark ? 'text-saffron' : 'text-royal'}>Foods</span>
+          <div className="flex items-center gap-1">
+            <Link to="/" className="font-display text-base font-extrabold tracking-tight">
+              Purple<span className={onDark ? 'text-saffron' : 'text-royal'}>Foods</span>
+            </Link>
+          </div>
+          <Link
+            to="/notifications"
+            aria-label={unread ? `${unread} unread notifications` : 'Notifications'}
+            className="relative rounded-full p-1.5"
+          >
+            <Bell className={`h-[18px] w-[18px] ${onDark ? 'text-lilac' : 'text-plum'}`} aria-hidden="true" />
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-saffron px-1 font-mono text-[9px] font-bold text-plum-deep">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
           </Link>
         </div>
       </header>
@@ -172,6 +221,7 @@ export function TopBar() {
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
+  { to: '/search', label: 'Search', icon: Search },
   { to: '/orders', label: 'Orders', icon: ReceiptText },
   { to: '/cart', label: 'Cart', icon: ShoppingBag },
   { to: '/account', label: 'Account', icon: User },
@@ -182,7 +232,7 @@ export function BottomNav() {
   const loc = useLocation()
   return (
     <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur" aria-label="Main navigation">
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {TABS.map((t) => {
           const active = t.to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(t.to)
           return (
