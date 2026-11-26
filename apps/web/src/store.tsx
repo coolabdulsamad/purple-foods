@@ -7,6 +7,8 @@ import type { MenuItemDto, RestaurantDto } from './types'
 interface StoreShape {
   area: SelectedArea | null
   setArea: (a: SelectedArea) => void
+  onboarded: boolean
+  completeOnboarding: () => void
   lines: CartLine[]
   count: number
   subtotalKobo: number
@@ -20,6 +22,7 @@ interface StoreShape {
   saveProfile: (p: Profile) => void
   session: Session | null
   setSession: (s: Session) => void
+  updateSessionUser: (u: Session['user']) => void
   signOut: () => void
 }
 
@@ -38,6 +41,7 @@ function read<T>(key: string, fallback: T): T {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [area, setArea] = useState<SelectedArea | null>(() => read('pf2-area', null))
+  const [onboarded, setOnboarded] = useState<boolean>(() => read('pf2-onboarded', false))
   const [lines, setLines] = useState<CartLine[]>(() => read('pf2-cart', []))
   const [profile, setProfile] = useState<Profile>(() => read('pf2-profile', EMPTY_PROFILE))
   const [session, setSessionState] = useState<Session | null>(() => {
@@ -47,6 +51,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => localStorage.setItem('pf2-area', JSON.stringify(area)), [area])
+  useEffect(() => localStorage.setItem('pf2-onboarded', JSON.stringify(onboarded)), [onboarded])
   useEffect(() => localStorage.setItem('pf2-cart', JSON.stringify(lines)), [lines])
   useEffect(() => localStorage.setItem('pf2-profile', JSON.stringify(profile)), [profile])
   useEffect(() => {
@@ -62,6 +67,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       area,
       setArea,
+      onboarded,
+      completeOnboarding: () => setOnboarded(true),
       lines,
       count,
       subtotalKobo,
@@ -92,13 +99,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Let checkout prefill from the signed-in identity.
         setProfile((p) => ({
           ...p,
-          phone: s.user.phone,
+          phone: s.user.phone ?? p.phone,
           name: p.name || s.user.name || '',
         }))
       },
+      updateSessionUser: (u) => setSessionState((s) => (s ? { ...s, user: u } : s)),
       signOut: () => setSessionState(null),
     }
-  }, [area, lines, profile, session])
+  }, [area, onboarded, lines, profile, session])
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>
 }

@@ -1,8 +1,19 @@
 import type { MenuItemDto, RestaurantDto, SessionUserDto } from '@contracts/types'
 
-export type { AreaDto, MenuItemDto, OrderDto, RestaurantDetailDto, RestaurantDto, SessionUserDto } from '@contracts/types'
+export type {
+  AddressDto,
+  AreaDto,
+  AuthResult,
+  MenuItemDto,
+  MenuItemSearchDto,
+  NotificationDto,
+  OrderDto,
+  RestaurantDetailDto,
+  RestaurantDto,
+  SessionUserDto,
+} from '@contracts/types'
 
-/** An active phone-OTP sign-in, persisted on-device. */
+/** An active sign-in (phone OTP, email, or Google), persisted on-device. */
 export interface Session {
   token: string
   expiresAt: string
