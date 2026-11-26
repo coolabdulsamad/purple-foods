@@ -152,6 +152,7 @@ export async function getRestaurantBySlug(
     category: i.category,
     isSpicy: i.isSpicy,
     isPopular: i.isPopular,
+    photoUrl: i.photoUrl,
     optionGroups: groupsByItem.get(i.id) ?? [],
   }));
 
@@ -226,6 +227,7 @@ export async function listAllMenuItems(): Promise<MenuItemSearchDto[]> {
       category: i.category,
       isSpicy: i.isSpicy,
       isPopular: i.isPopular,
+      photoUrl: i.photoUrl,
       // Groups are loaded through catalog.restaurant on the item page.
       optionGroups: [],
       merchantId: m.id,
