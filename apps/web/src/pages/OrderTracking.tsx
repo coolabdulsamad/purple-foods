@@ -1,5 +1,7 @@
-import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, LifeBuoy, MapPin, PackageCheck, Phone, RefreshCcw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { ArrowLeft, BadgeCheck, CreditCard, LifeBuoy, Loader2, MapPin, PackageCheck, PackageCheck as DeliveredIcon, Phone, RefreshCcw, Star } from 'lucide-react'
+import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { DishArt, ErrorBlock, LoadingBlock, Mono, fmt } from '../ui'
@@ -8,12 +10,62 @@ import { EtaClock, OrderStepper, STATUS_LABEL } from './order-shared'
 
 export default function OrderTrackingPage() {
   const { ref } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { session } = useStore()
+  const utils = trpc.useUtils()
   const ordersQuery = trpc.orders.mine.useQuery(undefined, {
     enabled: !!session,
     refetchInterval: 15000,
   })
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const verifyingRef = useRef(false)
+
+  const confirmDelivery = trpc.orders.confirmDelivery.useMutation({
+    onSuccess: () => {
+      toast.success('Enjoy your meal!', { description: 'Order marked as delivered.' })
+      utils.orders.mine.invalidate()
+    },
+    onError: (err) => toast.error('Could not confirm delivery', { description: err.message }),
+  })
+  const submitReview = trpc.reviews.submit.useMutation({
+    onSuccess: () => {
+      toast.success('Thanks for the feedback!')
+      utils.orders.mine.invalidate()
+    },
+    onError: (err) => toast.error('Review not saved', { description: err.message }),
+  })
+  const verify = trpc.payments.verify.useMutation()
+  const initialize = trpc.payments.initialize.useMutation()
+
+  // Returning from Paystack hosted checkout: ?paid=1&reference=… — verify
+  // server-side so the webhook isn't the only path to a settled order.
+  useEffect(() => {
+    const reference = searchParams.get('reference') ?? searchParams.get('trxref')
+    if (searchParams.get('paid') !== '1' || !reference || verifyingRef.current) return
+    verifyingRef.current = true
+    verify.mutate(
+      { reference },
+      {
+        onSuccess: (r) => {
+          if (r.status === 'success') toast.success('Payment confirmed', { description: 'Your order is with the kitchen.' })
+          else toast.info('Payment is still processing', { description: 'We will update the order the moment Paystack confirms.' })
+          utils.orders.mine.invalidate()
+        },
+        onError: (err) => toast.error('Could not verify payment', { description: err.message }),
+        onSettled: () => {
+          setSearchParams((prev) => {
+            prev.delete('paid')
+            prev.delete('reference')
+            prev.delete('trxref')
+            return prev
+          }, { replace: true })
+        },
+      },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!session) {
     return (
@@ -83,7 +135,92 @@ export default function OrderTrackingPage() {
             This order was cancelled. You were not charged.
           </p>
         )}
+        {o.status === 'on_the_way' && (
+          <button
+            onClick={() => confirmDelivery.mutate({ orderId: o.id })}
+            disabled={confirmDelivery.isPending}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-mint py-3.5 text-sm font-extrabold text-plum-deep transition-transform duration-150 active:scale-[0.98] disabled:opacity-60"
+          >
+            {confirmDelivery.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <DeliveredIcon className="h-4 w-4" aria-hidden="true" />
+            )}
+            I've received my food
+          </button>
+        )}
+        {o.paymentMethod === 'paystack' && o.paymentStatus === 'pending' && o.status !== 'cancelled' && (
+          <button
+            onClick={() =>
+              initialize.mutate(
+                { orderId: o.id, callbackBase: window.location.origin },
+                {
+                  onSuccess: (r) => window.location.assign(r.authorizationUrl),
+                  onError: (err) => toast.error('Could not start payment', { description: err.message }),
+                },
+              )
+            }
+            disabled={initialize.isPending || verify.isPending}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-royal py-3.5 text-sm font-extrabold text-lilac transition-transform duration-150 active:scale-[0.98] disabled:opacity-60"
+          >
+            {initialize.isPending || verify.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <CreditCard className="h-4 w-4" aria-hidden="true" />
+            )}
+            {verify.isPending ? 'Verifying payment…' : `Complete payment · ${fmt(o.totalKobo)}`}
+          </button>
+        )}
       </div>
+
+      {o.status === 'delivered' && (
+        <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          {o.reviewed ? (
+            <p className="flex items-center gap-2 text-sm font-bold text-plum">
+              <BadgeCheck className="h-4 w-4 text-mint" aria-hidden="true" />
+              Thanks for reviewing this order
+            </p>
+          ) : (
+            <>
+              <Mono className="text-muted-foreground">[RATE YOUR ORDER]</Mono>
+              <p className="mt-2 text-sm font-bold text-plum">How was {o.merchantName}?</p>
+              <div className="mt-2.5 flex gap-1.5" role="radiogroup" aria-label="Your rating">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    role="radio"
+                    aria-checked={rating === n}
+                    aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                    onClick={() => setRating(n)}
+                    className="rounded-full p-1 transition-transform active:scale-90"
+                  >
+                    <Star
+                      className={`h-7 w-7 ${n <= rating ? 'fill-saffron text-saffron' : 'text-lilac-deep'}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="Tell others about the food (optional)"
+                className="mt-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-royal"
+              />
+              <button
+                onClick={() => rating > 0 && submitReview.mutate({ orderId: o.id, rating, comment: comment.trim() })}
+                disabled={rating === 0 || submitReview.isPending}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-plum py-3 text-sm font-extrabold text-lilac transition-transform duration-150 active:scale-[0.98] disabled:opacity-50"
+              >
+                {submitReview.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                Submit review
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {(o.merchantLat != null || o.deliveryAreaLat != null) && (
         <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
@@ -115,7 +252,7 @@ export default function OrderTrackingPage() {
                   {[
                     it.cutlery ? 'cutlery' : '',
                     it.allergy ? `allergy: ${it.allergy}` : '',
-                    it.note ? `“${it.note}”` : '',
+                    it.note ? `"${it.note}"` : '',
                   ].filter(Boolean).join(' · ')}
                 </p>
               )}
@@ -131,6 +268,12 @@ export default function OrderTrackingPage() {
             <span>Delivery</span>
             <span className="font-mono">{fmt(o.deliveryFeeKobo)}</span>
           </div>
+          {o.discountKobo > 0 && (
+            <div className="flex justify-between font-semibold text-mint">
+              <span>Promo{o.promoCode ? ` (${o.promoCode})` : ''}</span>
+              <span className="font-mono">−{fmt(o.discountKobo)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-border pt-2 font-display text-base font-extrabold text-plum">
             <span>Total</span>
             <span className="font-mono">{fmt(o.totalKobo)}</span>
@@ -149,7 +292,7 @@ export default function OrderTrackingPage() {
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               {o.deliveryStreet}, {o.deliveryAreaName}
             </p>
-            {o.deliveryNotes && <p className="mt-1 text-xs italic text-muted-foreground">“{o.deliveryNotes}”</p>}
+            {o.deliveryNotes && <p className="mt-1 text-xs italic text-muted-foreground">"{o.deliveryNotes}"</p>}
             <p className="mt-1 flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <Phone className="h-3 w-3" aria-hidden="true" />
               {o.deliveryPhone}
