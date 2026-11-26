@@ -12,6 +12,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -171,6 +172,48 @@ export const menuItems = pgTable(
   ],
 );
 
+// ── Menu item option groups ("choose up to N" add-ons) ──────────────
+export const menuItemOptionGroups = pgTable(
+  "menu_item_option_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    menuItemId: uuid("menu_item_id")
+      .notNull()
+      .references(() => menuItems.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    minSelect: integer("min_select").notNull().default(0),
+    maxSelect: integer("max_select").notNull().default(1),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("idx_miog_item").on(t.menuItemId)],
+);
+
+export const menuItemOptions = pgTable(
+  "menu_item_options",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => menuItemOptionGroups.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    priceKobo: bigint("price_kobo", { mode: "bigint" })
+      .notNull()
+      .default(BigInt(0)),
+    isAvailable: boolean("is_available").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_mio_group").on(t.groupId),
+    check("menu_item_options_price_nonneg", sql`${t.priceKobo} >= 0`),
+  ],
+);
+
 export const riders = pgTable("riders", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
@@ -263,6 +306,13 @@ export const orderItems = pgTable(
     unitPriceKobo: bigint("unit_price_kobo", { mode: "bigint" }).notNull(),
     quantity: integer("quantity").notNull(),
     lineTotalKobo: bigint("line_total_kobo", { mode: "bigint" }).notNull(),
+    // Kitchen-facing detail captured on the item page.
+    optionsSnapshot: jsonb("options_snapshot")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    note: text("note").notNull().default(""),
+    allergy: text("allergy").notNull().default(""),
+    cutlery: boolean("cutlery").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -425,6 +475,8 @@ export const schema = {
   areas,
   merchants,
   menuItems,
+  menuItemOptionGroups,
+  menuItemOptions,
   riders,
   orders,
   orderItems,
