@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { ArrowLeft, Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
@@ -8,9 +8,16 @@ import { GoogleButton } from '../components/GoogleButton'
 import { Grain, Mono } from '../ui'
 import type { AuthResult } from '../types'
 
+/** Only same-app paths are honored (blocks open redirects). */
+function safeNext(raw: string | null): string | null {
+  return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : null
+}
+
 export default function SignUpPage() {
   const { setSession, completeOnboarding } = useStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = safeNext(searchParams.get('next'))
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -18,7 +25,7 @@ export default function SignUpPage() {
     setSession({ token: r.token, expiresAt: r.expiresAt, user: r.user })
     completeOnboarding()
     toast.success('Account created', { description: `Welcome to Purple Foods${r.user.name ? `, ${r.user.name}` : ''}.` })
-    navigate('/', { replace: true })
+    navigate(next ?? '/', { replace: true })
   }
 
   const register = trpc.auth.register.useMutation({
@@ -105,7 +112,7 @@ export default function SignUpPage() {
         </div>
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/auth" className="font-bold text-royal underline underline-offset-2">
+          <Link to={`/auth${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-bold text-royal underline underline-offset-2">
             Sign in
           </Link>
         </p>
