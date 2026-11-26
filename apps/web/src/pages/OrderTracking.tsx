@@ -102,9 +102,23 @@ export default function OrderTrackingPage() {
         </Link>
         <ul className="divide-y divide-border px-4">
           {o.items.map((it, idx) => (
-            <li key={idx} className="flex justify-between py-3 text-sm">
-              <span className="text-plum">{it.quantity}× {it.name}</span>
-              <span className="font-mono text-muted-foreground">{fmt(it.lineTotalKobo)}</span>
+            <li key={idx} className="py-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-plum">{it.quantity}× {it.name}</span>
+                <span className="font-mono text-muted-foreground">{fmt(it.lineTotalKobo)}</span>
+              </div>
+              {it.options.length > 0 && (
+                <p className="mt-0.5 text-xs text-muted-foreground">+ {it.options.map((op) => op.name).join(', ')}</p>
+              )}
+              {(it.note || it.allergy || it.cutlery) && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {[
+                    it.cutlery ? 'cutlery' : '',
+                    it.allergy ? `allergy: ${it.allergy}` : '',
+                    it.note ? `“${it.note}”` : '',
+                  ].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </li>
           ))}
         </ul>
