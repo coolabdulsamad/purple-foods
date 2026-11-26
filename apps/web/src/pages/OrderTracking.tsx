@@ -168,7 +168,7 @@ export default function OrderTrackingPage() {
             ) : (
               <CreditCard className="h-4 w-4" aria-hidden="true" />
             )}
-            {verify.isPending ? 'Verifying payment…' : `Complete payment · {fmt(o.totalKobo)}`}
+            {verify.isPending ? 'Verifying payment…' : `Complete payment · ${fmt(o.totalKobo)}`}
           </button>
         )}
       </div>
