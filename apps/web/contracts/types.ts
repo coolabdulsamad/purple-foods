@@ -16,12 +16,34 @@ export type PaymentMethod = "cod" | "paystack" | "flutterwave";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
+export interface CityDto {
+  id: string;
+  name: string;
+  state: string;
+  /** City-centre coordinates (null only on legacy rows). */
+  lat: number | null;
+  lng: number | null;
+}
+
 export interface AreaDto {
   id: string;
   name: string;
+  cityId: string;
+  cityName: string;
+  state: string;
+  /** Zone-centre coordinates (null only on legacy rows). */
+  lat: number | null;
+  lng: number | null;
   baseDeliveryFeeKobo: number;
   etaMin: number;
   etaMax: number;
+}
+
+/** Result of matching a device geolocation to the closest delivery zone. */
+export interface NearestAreaDto {
+  area: AreaDto;
+  /** Great-circle distance from the device to the zone centre, in km. */
+  distanceKm: number;
 }
 
 export interface RestaurantDto {
@@ -79,6 +101,13 @@ export interface OrderDto {
   deliveryStreet: string;
   deliveryNotes: string;
   deliveryAreaName: string;
+  /** Kitchen coordinates — powers the live tracking map (nullable on
+   *  legacy rows). */
+  merchantLat: number | null;
+  merchantLng: number | null;
+  /** Delivery-zone centre coordinates — the customer pin on the map. */
+  deliveryAreaLat: number | null;
+  deliveryAreaLng: number | null;
   items: OrderItemDto[];
 }
 

@@ -22,6 +22,7 @@ import m0002 from "../../db/migrations/0002_seed_lagos.sql";
 import m0003 from "../../db/migrations/0003_abuja.sql";
 import m0004 from "../../db/migrations/0004_auth.sql";
 import m0005 from "../../db/migrations/0005_full_auth.sql";
+import m0006 from "../../db/migrations/0006_cities_geo.sql";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -31,6 +32,7 @@ const MIGRATIONS: ReadonlyArray<readonly [string, string]> = [
   ["0003_abuja.sql", m0003],
   ["0004_auth.sql", m0004],
   ["0005_full_auth.sql", m0005],
+  ["0006_cities_geo.sql", m0006],
 ];
 
 export async function ensureSchema(): Promise<void> {

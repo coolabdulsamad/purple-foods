@@ -1,12 +1,14 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type {
   AreaDto,
+  CityDto,
   MenuItemDto,
   MenuItemSearchDto,
+  NearestAreaDto,
   RestaurantDetailDto,
   RestaurantDto,
 } from "@contracts/types";
-import { areas, merchants, menuItems } from "@db/schema";
+import { areas, cities, merchants, menuItems } from "@db/schema";
 import { getDb } from "./connection";
 
 function toRestaurantDto(row: {
@@ -32,29 +34,82 @@ function toRestaurantDto(row: {
   };
 }
 
-export async function listAreas(): Promise<AreaDto[]> {
+export async function listCities(): Promise<CityDto[]> {
   const db = getDb();
   const rows = await db
     .select()
-    .from(areas)
-    .where(eq(areas.isActive, true))
-    .orderBy(asc(areas.name));
-  return rows.map((a) => ({
-    id: a.id,
-    name: a.name,
-    baseDeliveryFeeKobo: Number(a.baseDeliveryFeeKobo),
-    etaMin: a.etaMinMinutes,
-    etaMax: a.etaMaxMinutes,
+    .from(cities)
+    .where(eq(cities.isActive, true))
+    .orderBy(asc(cities.name));
+  return rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    state: c.state,
+    lat: c.lat,
+    lng: c.lng,
   }));
 }
 
-export async function listRestaurants(): Promise<RestaurantDto[]> {
+function toAreaDto(a: typeof areas.$inferSelect, c: typeof cities.$inferSelect): AreaDto {
+  return {
+    id: a.id,
+    name: a.name,
+    cityId: c.id,
+    cityName: c.name,
+    state: c.state,
+    lat: a.lat,
+    lng: a.lng,
+    baseDeliveryFeeKobo: Number(a.baseDeliveryFeeKobo),
+    etaMin: a.etaMinMinutes,
+    etaMax: a.etaMaxMinutes,
+  };
+}
+
+export async function listAreas(): Promise<AreaDto[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ area: areas, city: cities })
+    .from(areas)
+    .innerJoin(cities, eq(areas.cityId, cities.id))
+    .where(and(eq(areas.isActive, true), eq(cities.isActive, true)))
+    .orderBy(asc(cities.name), asc(areas.name));
+  return rows.map(({ area, city }) => toAreaDto(area, city));
+}
+
+/** Great-circle distance in km — good enough for zone matching at city scale. */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLng = (lng2 - lng1) * rad;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Match device coordinates to the closest active delivery zone. */
+export async function nearestArea(lat: number, lng: number): Promise<NearestAreaDto | null> {
+  const all = await listAreas();
+  let best: NearestAreaDto | null = null;
+  for (const area of all) {
+    if (area.lat == null || area.lng == null) continue;
+    const distanceKm = haversineKm(lat, lng, area.lat, area.lng);
+    if (!best || distanceKm < best.distanceKm) best = { area, distanceKm };
+  }
+  return best;
+}
+
+export async function listRestaurants(areaId?: string): Promise<RestaurantDto[]> {
   const db = getDb();
   const rows = await db
     .select({ merchant: merchants, area: areas })
     .from(merchants)
     .innerJoin(areas, eq(merchants.areaId, areas.id))
-    .where(eq(merchants.isListed, true))
+    .where(
+      areaId
+        ? and(eq(merchants.isListed, true), eq(merchants.areaId, areaId))
+        : eq(merchants.isListed, true),
+    )
     .orderBy(asc(merchants.name));
   return rows.map(toRestaurantDto);
 }
