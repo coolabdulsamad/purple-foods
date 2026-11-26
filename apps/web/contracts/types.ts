@@ -90,12 +90,15 @@ export interface CreateOrderResult {
   paymentStatus: PaymentStatus;
 }
 
-// ── Auth (phone OTP) ───────────────────────────────────────────────
+// ── Auth (phone OTP · email+password · Google) ─────────────────────
 
 export interface SessionUserDto {
   id: string;
-  phone: string;
+  /** Null until the customer adds a phone (email/Google sign-ups). */
+  phone: string | null;
+  email: string | null;
   name: string | null;
+  avatarUrl: string | null;
   role: "customer" | "rider" | "merchant" | "admin";
 }
 
@@ -106,8 +109,37 @@ export interface RequestOtpResult {
   devCode?: string;
 }
 
-export interface VerifyOtpResult {
+/** Returned by every successful sign-in method (OTP, email, Google). */
+export interface AuthResult {
   token: string;
   expiresAt: string;
   user: SessionUserDto;
+}
+
+// ── Customer data stores ───────────────────────────────────────────
+
+export interface AddressDto {
+  id: string;
+  label: string;
+  street: string;
+  areaId: string;
+  areaName: string;
+  notes: string;
+  isDefault: boolean;
+}
+
+export interface NotificationDto {
+  id: string;
+  title: string;
+  body: string;
+  kind: "order" | "promo" | "info";
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** A menu item flattened with its restaurant — used by search. */
+export interface MenuItemSearchDto extends MenuItemDto {
+  merchantId: string;
+  merchantSlug: string;
+  merchantName: string;
 }

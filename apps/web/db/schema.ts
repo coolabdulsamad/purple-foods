@@ -28,20 +28,35 @@ const timestamps = {
     .defaultNow(),
 };
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  phone: text("phone").notNull().unique(),
-  name: text("name"),
-  email: text("email"),
-  role: text("role", { enum: ["customer", "rider", "merchant", "admin"] })
-    .notNull()
-    .default("customer"),
-  status: text("status", { enum: ["active", "suspended", "deleted"] })
-    .notNull()
-    .default("active"),
-  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-  ...timestamps,
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Nullable since 0005: email/Google accounts may not have a phone yet.
+    // Uniqueness lives in partial unique indexes (phone / lower(email) /
+    // google_sub) created by migration 0005.
+    phone: text("phone"),
+    name: text("name"),
+    email: text("email"),
+    passwordHash: text("password_hash"),
+    googleSub: text("google_sub"),
+    avatarUrl: text("avatar_url"),
+    role: text("role", { enum: ["customer", "rider", "merchant", "admin"] })
+      .notNull()
+      .default("customer"),
+    status: text("status", { enum: ["active", "suspended", "deleted"] })
+      .notNull()
+      .default("active"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    // Mirror only — canonical DDL (partial unique indexes on phone,
+    // lower(email), google_sub) lives in infra/db/migrations/0005.
+    unique("users_phone_unique").on(t.phone),
+    index("idx_users_email_lower").on(sql`lower(${t.email})`),
+  ],
+);
 
 export const cities = pgTable(
   "cities",
@@ -336,6 +351,66 @@ export const sessions = pgTable(
   (t) => [index("idx_sessions_user").on(t.userId)],
 );
 
+// ── Customer data stores (0005_full_auth.sql) ──────────────────────
+
+export const addresses = pgTable(
+  "addresses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull().default("Home"),
+    street: text("street").notNull(),
+    areaId: uuid("area_id")
+      .notNull()
+      .references(() => areas.id),
+    notes: text("notes").notNull().default(""),
+    lat: numeric("lat", { precision: 9, scale: 6 }),
+    lng: numeric("lng", { precision: 9, scale: 6 }),
+    isDefault: boolean("is_default").notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [index("idx_addresses_user").on(t.userId)],
+);
+
+export const favorites = pgTable(
+  "favorites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.merchantId)],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    kind: text("kind", { enum: ["order", "promo", "info"] })
+      .notNull()
+      .default("info"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("idx_notifications_user").on(t.userId, t.createdAt)],
+);
+
 export const schema = {
   users,
   cities,
@@ -349,4 +424,7 @@ export const schema = {
   ledgerEntries,
   otpCodes,
   sessions,
+  addresses,
+  favorites,
+  notifications,
 };
