@@ -3,6 +3,7 @@ import { ArrowLeft, LifeBuoy, MapPin, PackageCheck, Phone, RefreshCcw } from 'lu
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { DishArt, ErrorBlock, LoadingBlock, Mono, fmt } from '../ui'
+import { TrackingMap } from '../components/TrackingMap'
 import { EtaClock, OrderStepper, STATUS_LABEL } from './order-shared'
 
 export default function OrderTrackingPage() {
@@ -83,6 +84,12 @@ export default function OrderTrackingPage() {
           </p>
         )}
       </div>
+
+      {(o.merchantLat != null || o.deliveryAreaLat != null) && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
+          <TrackingMap order={o} />
+        </div>
+      )}
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
         <Link to={`/r/${o.merchantSlug}`} className="flex items-center gap-3 border-b border-border p-4 transition-colors hover:bg-lilac/60">

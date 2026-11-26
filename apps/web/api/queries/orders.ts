@@ -355,6 +355,11 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
     deliveryStreet: o.deliveryStreet,
     deliveryNotes: o.deliveryNotes,
     deliveryAreaName: a.name,
+    // Kitchen + delivery-zone coordinates for the live tracking map.
+    merchantLat: m.lat == null ? null : Number(m.lat),
+    merchantLng: m.lng == null ? null : Number(m.lng),
+    deliveryAreaLat: a.lat,
+    deliveryAreaLng: a.lng,
     items: itemsByOrder.get(o.id) ?? [],
   }));
 }

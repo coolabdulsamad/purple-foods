@@ -5,7 +5,9 @@ import {
   getRestaurantBySlug,
   listAllMenuItems,
   listAreas,
+  listCities,
   listRestaurants,
+  nearestArea,
 } from "./queries/catalog";
 import { createOrder, listOrdersByUser } from "./queries/orders";
 import {
@@ -32,7 +34,30 @@ import {
 const catalogRouter = createRouter({
   areas: publicQuery.query(() => listAreas()),
 
-  restaurants: publicQuery.query(() => listRestaurants()),
+  cities: publicQuery.query(() => listCities()),
+
+  // Device geolocation → closest active delivery zone (haversine).
+  nearestArea: publicQuery
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+      }),
+    )
+    .query(async ({ input }) => {
+      const match = await nearestArea(input.lat, input.lng);
+      if (!match) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No delivery zones are available yet.",
+        });
+      }
+      return match;
+    }),
+
+  restaurants: publicQuery
+    .input(z.object({ areaId: z.string().uuid().optional() }).optional())
+    .query(({ input }) => listRestaurants(input?.areaId)),
 
   // All available menu items across listed merchants — search + item pages.
   items: publicQuery.query(() => listAllMenuItems()),

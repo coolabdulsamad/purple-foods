@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { ArrowDownWideNarrow, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
+import { useStore } from '../store'
 import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
 
 type Sort = 'rating' | 'eta' | 'fee'
 
 export default function RestaurantsPage() {
+  const { area } = useStore()
   const [cat, setCat] = useState('All')
   const [sort, setSort] = useState<Sort>('rating')
-  const restaurantsQuery = trpc.catalog.restaurants.useQuery()
+  const restaurantsQuery = trpc.catalog.restaurants.useQuery({ areaId: area?.id })
 
   const categories = useMemo(() => {
     const set = new Set<string>()
@@ -30,7 +32,9 @@ export default function RestaurantsPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">All restaurants</h1>
-      <Mono className="mt-1 text-muted-foreground">[{filtered.length} SPOTS · ABUJA]</Mono>
+      <Mono className="mt-1 text-muted-foreground">
+        [{filtered.length} SPOTS · {area ? `${area.name.toUpperCase()}${area.cityName ? `, ${area.cityName.toUpperCase()}` : ''}` : 'ALL CITIES'}]
+      </Mono>
 
       <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Cuisine categories">
         {categories.map((c) => (
