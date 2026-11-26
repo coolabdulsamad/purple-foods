@@ -168,7 +168,7 @@ export default function OrderTrackingPage() {
             ) : (
               <CreditCard className="h-4 w-4" aria-hidden="true" />
             )}
-            {verify.isPending ? 'Verifying payment…' : `Complete payment · ${fmt(o.totalKobo)}`}
+            {verify.isPending ? 'Verifying payment…' : `Complete payment · {fmt(o.totalKobo)}`}
           </button>
         )}
       </div>
@@ -252,7 +252,7 @@ export default function OrderTrackingPage() {
                   {[
                     it.cutlery ? 'cutlery' : '',
                     it.allergy ? `allergy: ${it.allergy}` : '',
-                    it.note ? `"${it.note}"` : '',
+                    it.note ? `“${it.note}”` : '',
                   ].filter(Boolean).join(' · ')}
                 </p>
               )}
@@ -292,7 +292,7 @@ export default function OrderTrackingPage() {
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
               {o.deliveryStreet}, {o.deliveryAreaName}
             </p>
-            {o.deliveryNotes && <p className="mt-1 text-xs italic text-muted-foreground">"{o.deliveryNotes}"</p>}
+            {o.deliveryNotes && <p className="mt-1 text-xs italic text-muted-foreground">“{o.deliveryNotes}”</p>}
             <p className="mt-1 flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <Phone className="h-3 w-3" aria-hidden="true" />
               {o.deliveryPhone}
