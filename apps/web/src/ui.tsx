@@ -53,6 +53,13 @@ export function DishArt({ seed, className }: { seed: string; className?: string 
   )
 }
 
+/** Real dish photo with DishArt fallback (missing URL or failed load). */
+export function DishImage({ src, seed, className }: { src?: string | null; seed: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed) return <DishArt seed={seed} className={className} />
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className={`${className ?? ''} object-cover`} />
+}
+
 export function Grain() {
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.16] mix-blend-soft-light" aria-hidden="true">
