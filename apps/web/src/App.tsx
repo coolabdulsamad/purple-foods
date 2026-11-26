@@ -18,12 +18,14 @@ import {
   OrderSuccessPage,
   OrderTrackingPage,
   OrdersPage,
+  PaymentsPage,
   PromosPage,
   RestaurantPage,
   RestaurantsPage,
   SearchPage,
   SignInPage,
   SignUpPage,
+  TransactionsPage,
   WelcomePage,
 } from './pages'
 
@@ -61,6 +63,8 @@ function Shell() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/account/edit" element={<EditProfilePage />} />
           <Route path="/account/addresses" element={<AddressesPage />} />
+          <Route path="/account/payments" element={<PaymentsPage />} />
+          <Route path="/account/transactions" element={<TransactionsPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/promos" element={<PromosPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
