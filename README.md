@@ -16,7 +16,7 @@ packages/
   config/    Shared tooling config (eslint, tsconfig, tailwind preset)
 docs/        Project documentation (see master blueprint)
 infra/       Infrastructure-as-code, CI workflows, deploy scripts
-  db/migrations/  Canonical DDL + seed SQL (0001_init, 0002_seed_lagos, 0003_abuja, 0004_auth) — applied to Neon
+  db/migrations/  Canonical DDL + seed SQL (0001_init, 0002_seed_lagos, 0003_abuja, 0004_auth, 0005_full_auth) — applied to Neon
 ```
 
 > Note: the API originally planned as a separate `apps/api` service is grafted directly
@@ -42,7 +42,15 @@ infra/       Infrastructure-as-code, CI workflows, deploy scripts
 | P4 | 15–20 | Growth & AI: referrals, PurplePass, POS API, batching+ |
 | P5 | 21–24 | QA, load test, pen test, store review, city launch |
 
-**Status:** P1 foundation live on Abuja (FCT) — Neon schema + seed applied, city switched Lagos → Abuja (0003); storefront reads/writes the real database (catalog, order placement with server-side pricing, balanced ledger, order tracking); phone OTP auth live (0004 — requestOtp/verifyOtp/me/logout, HMAC-hashed codes, bearer sessions, Termii-ready SMS with dev-code fallback).
+**Status:** P1 foundation live on Abuja (FCT). Storefront is a full 22-route
+experience — onboarding (intro → location → sign-in), home, search, restaurant
++ item detail, category, cart, checkout, live order tracking, account hub with
+addresses / favorites / notifications / promos / help. Auth is three-method
+(0005): phone OTP (Termii-ready, dev-code fallback), email + password (scrypt,
+account-upgrade path for OTP guests), and Google ID-token sign-in (activates
+once `GOOGLE_CLIENT_ID` is configured). Addresses, favorites, notifications,
+order history and phone-backfill checkout all persist to Neon; guest checkout
+stays supported.
 
 ## Getting started
 
