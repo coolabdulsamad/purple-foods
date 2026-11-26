@@ -1,31 +1,76 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Banknote, CreditCard, Loader2, Lock, LogIn, MapPin, ShieldCheck, ShoppingBag, UserPlus, Wallet } from 'lucide-react'
+import { BadgeCheck, Banknote, CreditCard, Loader2, Lock, LogIn, MapPin, ShieldCheck, ShoppingBag, Tag, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { cartLineUnitKobo } from '../types'
-import { DishArt, Mono, fmt } from '../ui'
-
-const PAYMENTS = [
-  { id: 'paystack' as const, label: 'Card via Paystack', desc: 'Secured handoff — live in the payments phase', icon: CreditCard },
-  { id: 'flutterwave' as const, label: 'Flutterwave', desc: 'Cards, transfer and USSD — live in the payments phase', icon: Wallet },
-  { id: 'cod' as const, label: 'Cash on delivery', desc: 'Rider collects on handover', icon: Banknote },
-]
+import type { PromoCheckDto } from '../types'
+import { DishImage, Mono, fmt } from '../ui'
 
 export default function CheckoutPage() {
-  const { lines, subtotalKobo, deliveryFeeKobo, totalKobo, area, profile, saveProfile, clear, cartRestaurant, session } = useStore()
+  const { lines, subtotalKobo, deliveryFeeKobo, area, profile, saveProfile, clear, cartRestaurant, session } = useStore()
   const navigate = useNavigate()
+  const utils = trpc.useUtils()
   const areasQuery = trpc.catalog.areas.useQuery()
   const addressesQuery = trpc.addresses.list.useQuery(undefined, { enabled: !!session })
+  const gatewayQuery = trpc.payments.config.useQuery(undefined, { enabled: !!session })
+  const cardsQuery = trpc.payments.cards.useQuery(undefined, { enabled: !!session })
   const [form, setForm] = useState({ name: profile.name, phone: profile.phone, street: profile.street, notes: profile.notes })
   const [areaId, setAreaId] = useState(area?.id ?? '')
-  const [payment, setPayment] = useState<'paystack' | 'flutterwave' | 'cod'>('cod')
+  const [payment, setPayment] = useState<'paystack' | 'cod'>('cod')
+  const [cardId, setCardId] = useState<string | 'new'>('new')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [promoInput, setPromoInput] = useState('')
+  const [promo, setPromo] = useState<PromoCheckDto | null>(null)
+  const [promoBusy, setPromoBusy] = useState(false)
+
+  const paystackEnabled = gatewayQuery.data?.paystackEnabled ?? false
+  const cards = cardsQuery.data ?? []
+  const discountKobo = promo?.discountKobo ?? 0
+  const effectiveTotal = Math.max(0, subtotalKobo + deliveryFeeKobo - discountKobo)
+
+  const initialize = trpc.payments.initialize.useMutation()
+  const chargeCard = trpc.payments.chargeCard.useMutation()
 
   const createOrder = trpc.orders.create.useMutation({
     onSuccess: (result) => {
       saveProfile({ name: form.name.trim(), phone: form.phone.trim(), street: form.street.trim(), notes: form.notes.trim() })
+      if (payment === 'paystack') {
+        clear()
+        if (cardId !== 'new') {
+          // One-tap saved card: charge server-side, then land on tracking.
+          chargeCard.mutate(
+            { cardId, orderId: result.orderId },
+            {
+              onSuccess: (v) => {
+                if (v.status === 'success') navigate(`/order-success/${result.humanRef}`, { replace: true })
+                else {
+                  toast.error('Card charge did not complete', { description: 'Your order is saved — you can retry payment from tracking.' })
+                  navigate(`/orders/${result.humanRef}`, { replace: true })
+                }
+              },
+              onError: (err) => {
+                toast.error('Card charge failed', { description: err.message })
+                navigate(`/orders/${result.humanRef}`, { replace: true })
+              },
+            },
+          )
+        } else {
+          // New card: hand off to Paystack hosted checkout.
+          initialize.mutate(
+            { orderId: result.orderId, callbackBase: window.location.origin },
+            {
+              onSuccess: (r) => window.location.assign(r.authorizationUrl),
+              onError: (err) => {
+                toast.error('Could not start card payment', { description: err.message })
+                navigate(`/orders/${result.humanRef}`, { replace: true })
+              },
+            },
+          )
+        }
+        return
+      }
       clear()
       navigate(`/order-success/${result.humanRef}`, { replace: true })
     },
@@ -37,6 +82,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!areaId && areasQuery.data?.length) setAreaId(area?.id ?? areasQuery.data[0].id)
   }, [areasQuery.data, area, areaId])
+
+  // Default to the default saved card when paying with Paystack.
+  useEffect(() => {
+    if (cards.length && cardId === 'new') setCardId((cards.find((c) => c.isDefault) ?? cards[0]).id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardsQuery.data])
 
   // Keep the form pinned to a sign-in that happens after mount.
   useEffect(() => {
@@ -54,6 +105,22 @@ export default function CheckoutPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressesQuery.data])
+
+  const applyPromo = async () => {
+    const code = promoInput.trim().toUpperCase()
+    if (code.length < 3 || promoBusy) return
+    setPromoBusy(true)
+    try {
+      const r = await utils.promos.check.fetch({ code, subtotalKobo, deliveryFeeKobo })
+      setPromo(r)
+      toast.success(`“${r.code}” applied`, { description: r.label })
+    } catch (e) {
+      setPromo(null)
+      toast.error('Code not valid', { description: e instanceof Error ? e.message : 'Try another code.' })
+    } finally {
+      setPromoBusy(false)
+    }
+  }
 
   if (!lines.length) {
     return (
@@ -79,7 +146,7 @@ export default function CheckoutPage() {
           </span>
           <h1 className="mt-4 font-display text-2xl font-extrabold tracking-tight text-plum">Sign in to place your order</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Your cart ({lines.reduce((n, l) => n + l.qty, 0)} item{lines.length > 1 || lines[0]?.qty > 1 ? 's' : ''} · {fmt(totalKobo)}) is saved on this device — it will be right here when you're back.
+            Your cart ({lines.reduce((n, l) => n + l.qty, 0)} item{lines.length > 1 || lines[0]?.qty > 1 ? 's' : ''} · {fmt(effectiveTotal)}) is saved on this device — it will be right here when you're back.
           </p>
           <Link
             to="/auth?next=/checkout"
@@ -103,7 +170,7 @@ export default function CheckoutPage() {
         <ul className="mt-4 space-y-2 rounded-3xl border border-border bg-card p-4">
           {lines.map((l) => (
             <li key={l.key} className="flex items-center gap-3">
-              <DishArt seed={l.itemId} className="h-10 w-10 shrink-0 rounded-lg" />
+              <DishImage src={l.photoUrl} seed={l.itemId} className="h-10 w-10 shrink-0 rounded-lg" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-plum">{l.qty}× {l.name}</p>
                 {(l.options ?? []).length > 0 && (
@@ -128,6 +195,8 @@ export default function CheckoutPage() {
     toast.success(`Delivering to “${a.label}”`, { description: `${a.street}, ${a.areaName}` })
   }
 
+  const busy = createOrder.isPending || initialize.isPending || chargeCard.isPending
+
   const submit = () => {
     const e: Record<string, string> = {}
     if (form.name.trim().length < 2) e.name = 'Tell us your name'
@@ -145,6 +214,7 @@ export default function CheckoutPage() {
       areaId,
       merchantSlug: cartRestaurant.slug,
       paymentMethod: payment,
+      promoCode: promo?.code ?? '',
       items: lines.map((l) => ({
         menuItemId: l.itemId,
         quantity: l.qty,
@@ -252,30 +322,128 @@ export default function CheckoutPage() {
             placeholder="Gate code, landmark, call on arrival…"
           />
         </div>
+
+        <div>
+          <label htmlFor="ck-promo" className="text-xs font-bold text-plum">Promo or referral code <span className="font-normal text-muted-foreground">(optional)</span></label>
+          {promo ? (
+            <div className="mt-1 flex items-center justify-between rounded-xl border border-mint/40 bg-mint/10 px-4 py-3">
+              <span className="flex items-center gap-2 text-sm font-bold text-plum">
+                <BadgeCheck className="h-4 w-4 text-mint" aria-hidden="true" />
+                {promo.code} — {promo.label}
+              </span>
+              <button
+                onClick={() => { setPromo(null); setPromoInput('') }}
+                aria-label="Remove promo code"
+                className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-lilac"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1 flex gap-2">
+              <input
+                id="ck-promo"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && applyPromo()}
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 font-mono text-sm uppercase outline-none focus:border-royal"
+                placeholder="WELCOME500"
+                maxLength={40}
+              />
+              <button
+                onClick={applyPromo}
+                disabled={promoBusy || promoInput.trim().length < 3}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-plum px-4 text-sm font-bold text-lilac transition-transform active:scale-95 disabled:opacity-50"
+              >
+                {promoBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Tag className="h-4 w-4" aria-hidden="true" />}
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       </div>
       <div className="lg:sticky lg:top-24">
       <h2 className="mt-6 font-display text-sm font-extrabold uppercase tracking-[0.14em] text-royal lg:mt-2">Payment</h2>
       <div className="mt-2 space-y-2" role="radiogroup" aria-label="Payment method">
-        {PAYMENTS.map((p) => (
+        <button
+          role="radio"
+          aria-checked={payment === 'paystack'}
+          onClick={() => {
+            if (!paystackEnabled) {
+              toast.info('Card payments are being connected', { description: 'Choose cash on delivery for now — your cards will live here soon.' })
+              return
+            }
+            setPayment('paystack')
+          }}
+          className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors duration-150 ${
+            payment === 'paystack' ? 'border-royal bg-lilac' : 'border-border bg-card hover:bg-lilac/60'
+          } ${!paystackEnabled ? 'opacity-70' : ''}`}
+        >
+          <CreditCard className={`h-5 w-5 shrink-0 ${payment === 'paystack' ? 'text-royal' : 'text-muted-foreground'}`} aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-plum">Card via Paystack</span>
+            <span className="block text-xs text-muted-foreground">{paystackEnabled ? 'Pay now — secured by Paystack' : 'Being connected — available soon'}</span>
+          </span>
+          <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${payment === 'paystack' ? 'border-royal bg-royal' : 'border-border'}`} aria-hidden="true" />
+        </button>
+        <button
+          role="radio"
+          aria-checked={payment === 'cod'}
+          onClick={() => setPayment('cod')}
+          className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors duration-150 ${
+            payment === 'cod' ? 'border-royal bg-lilac' : 'border-border bg-card hover:bg-lilac/60'
+          }`}
+        >
+          <Banknote className={`h-5 w-5 shrink-0 ${payment === 'cod' ? 'text-royal' : 'text-muted-foreground'}`} aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-plum">Cash on delivery</span>
+            <span className="block text-xs text-muted-foreground">Rider collects on handover</span>
+          </span>
+          <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${payment === 'cod' ? 'border-royal bg-royal' : 'border-border'}`} aria-hidden="true" />
+        </button>
+      </div>
+
+      {payment === 'paystack' && paystackEnabled && (
+        <div className="mt-3 space-y-2" role="radiogroup" aria-label="Choose card">
+          {cards.map((c) => (
+            <button
+              key={c.id}
+              role="radio"
+              aria-checked={cardId === c.id}
+              onClick={() => setCardId(c.id)}
+              className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${
+                cardId === c.id ? 'border-royal bg-lilac' : 'border-border bg-card hover:bg-lilac/60'
+              }`}
+            >
+              <CreditCard className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-plum">
+                  {c.brand} ···· {c.last4}
+                  {c.isDefault && <span className="ml-2 rounded-full bg-lilac-deep px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-royal">Default</span>}
+                </span>
+                <span className="block text-xs text-muted-foreground">{c.bank} · expires {c.expMonth}/{c.expYear}</span>
+              </span>
+              <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${cardId === c.id ? 'border-royal bg-royal' : 'border-border'}`} aria-hidden="true" />
+            </button>
+          ))}
           <button
-            key={p.id}
             role="radio"
-            aria-checked={payment === p.id}
-            onClick={() => setPayment(p.id)}
-            className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors duration-150 ${
-              payment === p.id ? 'border-royal bg-lilac' : 'border-border bg-card hover:bg-lilac/60'
+            aria-checked={cardId === 'new'}
+            onClick={() => setCardId('new')}
+            className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${
+              cardId === 'new' ? 'border-royal bg-lilac' : 'border-dashed border-border bg-card hover:bg-lilac/60'
             }`}
           >
-            <p.icon className={`h-5 w-5 shrink-0 ${payment === p.id ? 'text-royal' : 'text-muted-foreground'}`} aria-hidden="true" />
+            <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-plum">{p.label}</span>
-              <span className="block text-xs text-muted-foreground">{p.desc}</span>
+              <span className="block text-sm font-bold text-plum">{cards.length ? 'Use a new card' : 'Pay with card'}</span>
+              <span className="block text-xs text-muted-foreground">Secure Paystack checkout — card is saved for next time</span>
             </span>
-            <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${payment === p.id ? 'border-royal bg-royal' : 'border-border'}`} aria-hidden="true" />
+            <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${cardId === 'new' ? 'border-royal bg-royal' : 'border-border'}`} aria-hidden="true" />
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
       <div className="mt-5 rounded-2xl border border-border bg-card p-4">
         <div className="flex justify-between text-sm text-muted-foreground">
@@ -286,22 +454,34 @@ export default function CheckoutPage() {
           <span>Delivery</span>
           <span className="font-mono">{fmt(deliveryFeeKobo)}</span>
         </div>
+        {discountKobo > 0 && (
+          <div className="mt-1.5 flex justify-between text-sm font-semibold text-mint">
+            <span>Promo ({promo?.code})</span>
+            <span className="font-mono">−{fmt(discountKobo)}</span>
+          </div>
+        )}
         <div className="mt-3 flex justify-between border-t border-border pt-3 font-display text-lg font-extrabold text-plum">
           <span>Total</span>
-          <span className="font-mono">{fmt(totalKobo)}</span>
+          <span className="font-mono">{fmt(effectiveTotal)}</span>
         </div>
       </div>
 
       <button
         onClick={submit}
-        disabled={createOrder.isPending}
+        disabled={busy}
         className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-saffron py-4 font-display text-base font-extrabold text-plum-deep shadow-lg transition-transform duration-150 active:scale-[0.98] disabled:opacity-60"
       >
-        {createOrder.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-        {createOrder.isPending ? 'Placing order…' : `Place order · ${fmt(totalKobo)}`}
+        {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+        {busy
+          ? payment === 'paystack'
+            ? 'Starting payment…'
+            : 'Placing order…'
+          : payment === 'paystack'
+            ? `Pay ${fmt(effectiveTotal)}`
+            : `Place order · ${fmt(effectiveTotal)}`}
       </button>
       <p className="mt-3 pb-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-        Orders are written to the live Purple Foods database. Card gateways switch on in the payments phase; cash on delivery works today.
+        Orders are written to the live Purple Foods database. Card payments run through Paystack's secure checkout — we never see your card number.
       </p>
       </div>
       </div>
