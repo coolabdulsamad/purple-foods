@@ -132,6 +132,9 @@ export const merchants = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     promo: text("promo"),
+    // Branding (0010): signature-dish cover + generated logo badge.
+    coverUrl: text("cover_url"),
+    logoUrl: text("logo_url"),
     deliveryFeeKobo: bigint("delivery_fee_kobo", { mode: "bigint" }),
     etaMinMinutes: integer("eta_min_minutes"),
     etaMaxMinutes: integer("eta_max_minutes"),

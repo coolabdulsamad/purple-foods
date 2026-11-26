@@ -39,6 +39,8 @@ function toRestaurantDto(row: {
     rating: Number(m.rating),
     reviewCount: m.reviewCount,
     isOpen: m.isOpen,
+    coverUrl: m.coverUrl,
+    logoUrl: m.logoUrl,
   };
 }
 

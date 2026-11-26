@@ -151,6 +151,8 @@ export async function listFavorites(userId: string): Promise<RestaurantDto[]> {
     rating: Number(m.rating),
     reviewCount: m.reviewCount,
     isOpen: m.isOpen,
+    coverUrl: m.coverUrl,
+    logoUrl: m.logoUrl,
   }));
 }
 
