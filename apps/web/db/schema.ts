@@ -42,7 +42,10 @@ export const users = pgTable(
     email: text("email"),
     passwordHash: text("password_hash"),
     googleSub: text("google_sub"),
+    facebookId: text("facebook_id"),
     avatarUrl: text("avatar_url"),
+    referralCode: text("referral_code"),
+    referredBy: uuid("referred_by"),
     role: text("role", { enum: ["customer", "rider", "merchant", "admin"] })
       .notNull()
       .default("customer"),
@@ -259,6 +262,7 @@ export const orders = pgTable(
       .notNull()
       .default("pending"),
     paymentRef: text("payment_ref"),
+    promoCode: text("promo_code"),
     subtotalKobo: bigint("subtotal_kobo", { mode: "bigint" }).notNull(),
     deliveryFeeKobo: bigint("delivery_fee_kobo", { mode: "bigint" })
       .notNull()
@@ -469,6 +473,127 @@ export const notifications = pgTable(
   (t) => [index("idx_notifications_user").on(t.userId, t.createdAt)],
 );
 
+// ── Payments, reviews, promos (0009_payments_reviews_promos.sql) ────
+
+export const paymentCards = pgTable(
+  "payment_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull().default("paystack"),
+    authorizationCode: text("authorization_code").notNull(),
+    last4: text("last4").notNull().default(""),
+    brand: text("brand").notNull().default(""),
+    bank: text("bank").notNull().default(""),
+    expMonth: text("exp_month").notNull().default(""),
+    expYear: text("exp_year").notNull().default(""),
+    email: text("email").notNull().default(""),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.authorizationCode)],
+);
+
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id").references(() => orders.id, {
+      onDelete: "set null",
+    }),
+    provider: text("provider").notNull(),
+    reference: text("reference").notNull().unique(),
+    amountKobo: bigint("amount_kobo", { mode: "bigint" }).notNull(),
+    status: text("status", {
+      enum: ["pending", "success", "failed", "abandoned"],
+    })
+      .notNull()
+      .default("pending"),
+    channel: text("channel").notNull().default(""),
+    cardBrand: text("card_brand").notNull().default(""),
+    cardLast4: text("card_last4").notNull().default(""),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_transactions_user").on(t.userId, t.createdAt),
+    index("idx_transactions_order").on(t.orderId),
+  ],
+);
+
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id")
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id")
+      .notNull()
+      .unique()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    comment: text("comment").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("idx_reviews_merchant").on(t.merchantId, t.createdAt),
+    index("idx_reviews_user").on(t.userId),
+  ],
+);
+
+export const promoCodes = pgTable("promo_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  kind: text("kind", { enum: ["percent", "fixed", "free_delivery"] }).notNull(),
+  percentOff: integer("percent_off"),
+  valueKobo: bigint("value_kobo", { mode: "bigint" }),
+  minOrderKobo: bigint("min_order_kobo", { mode: "bigint" })
+    .notNull()
+    .default(BigInt(0)),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const promoRedemptions = pgTable(
+  "promo_redemptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    promoId: uuid("promo_id")
+      .notNull()
+      .references(() => promoCodes.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id").references(() => orders.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique().on(t.promoId, t.userId)],
+);
+
 export const schema = {
   users,
   cities,
@@ -487,4 +612,9 @@ export const schema = {
   addresses,
   favorites,
   notifications,
+  paymentCards,
+  transactions,
+  reviews,
+  promoCodes,
+  promoRedemptions,
 };
