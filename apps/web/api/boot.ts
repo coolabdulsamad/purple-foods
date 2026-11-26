@@ -11,6 +11,7 @@ import { handleClientLog } from "./lib/clientlog";
 import { ensureSchema } from "./lib/migrate";
 import { getDb } from "./queries/connection";
 import { REQUEST_ID_HEADER, runWithRequestId } from "./lib/requestcontext";
+import { handlePaystackWebhook } from "./queries/payments";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -103,6 +104,15 @@ app.get("/api/health", async (c) => {
     },
     db === "up" ? 200 : 503,
   );
+});
+
+// Paystack webhook: raw body (needed for the HMAC-SHA512 signature check),
+// always 200 on valid signature so the gateway doesn't retry forever.
+app.post("/api/webhooks/paystack", async (c) => {
+  const raw = await c.req.text();
+  const signature = c.req.header("x-paystack-signature");
+  const { ok } = await handlePaystackWebhook(raw, signature);
+  return c.json({ ok }, ok ? 200 : 401);
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
