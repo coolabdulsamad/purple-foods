@@ -1,7 +1,8 @@
 import { Link } from 'react-router'
-import { Minus, Plus, ShoppingBag, Trash2, ArrowRight } from 'lucide-react'
+import { AlertTriangle, Minus, PencilLine, Plus, ShoppingBag, Trash2, ArrowRight, UtensilsCrossed } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStore } from '../store'
+import { cartLineUnitKobo } from '../types'
 import { DishArt, Mono, fmt } from '../ui'
 
 export default function CartPage() {
@@ -36,25 +37,74 @@ export default function CartPage() {
       <Mono className="mt-1 text-muted-foreground">[{(cartRestaurant?.name ?? '').toUpperCase()}]</Mono>
       <div className="lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-8">
       <ul className="mt-4 space-y-3 lg:mt-2">
-        {lines.map((l) => (
-          <li key={l.key} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
-            <DishArt seed={l.itemId} className="h-14 w-14 shrink-0 rounded-xl" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-plum">{l.name}</p>
-              <p className="mt-0.5 font-mono text-xs text-muted-foreground">{fmt(l.priceKobo)} each</p>
+        {lines.map((l) => {
+          const unit = cartLineUnitKobo(l)
+          const options = l.options ?? []
+          return (
+          <li key={l.key} className="rounded-2xl border border-border bg-card p-3">
+            <div className="flex items-center gap-3">
+              <Link
+                to={`/item/${l.itemId}?line=${encodeURIComponent(l.key)}`}
+                className="flex min-w-0 flex-1 items-center gap-3"
+                aria-label={`Edit ${l.name}`}
+              >
+                <DishArt seed={l.itemId} className="h-14 w-14 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-plum">{l.name}</p>
+                  <p className="mt-0.5 font-mono text-xs text-muted-foreground">{fmt(unit)} each</p>
+                </div>
+              </Link>
+              <div className="flex items-center gap-1 rounded-full bg-lilac px-1.5 py-1">
+                <button onClick={() => setQty(l.key, l.qty - 1)} aria-label={`Reduce ${l.name}`} className="rounded-full p-1.5 text-plum transition-colors hover:bg-lilac-deep active:scale-95">
+                  <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+                <span key={l.qty} className="min-w-5 animate-bump text-center font-mono text-sm font-bold text-plum">{l.qty}</span>
+                <button onClick={() => setQty(l.key, l.qty + 1)} aria-label={`Add one more ${l.name}`} className="rounded-full p-1.5 text-plum transition-colors hover:bg-lilac-deep active:scale-95">
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+              <p className="w-16 shrink-0 text-right font-mono text-sm font-bold text-plum">{fmt(unit * l.qty)}</p>
             </div>
-            <div className="flex items-center gap-1 rounded-full bg-lilac px-1.5 py-1">
-              <button onClick={() => setQty(l.key, l.qty - 1)} aria-label={`Reduce ${l.name}`} className="rounded-full p-1.5 text-plum transition-colors hover:bg-lilac-deep active:scale-95">
-                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-              <span key={l.qty} className="min-w-5 animate-bump text-center font-mono text-sm font-bold text-plum">{l.qty}</span>
-              <button onClick={() => setQty(l.key, l.qty + 1)} aria-label={`Add one more ${l.name}`} className="rounded-full p-1.5 text-plum transition-colors hover:bg-lilac-deep active:scale-95">
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </div>
-            <p className="w-16 shrink-0 text-right font-mono text-sm font-bold text-plum">{fmt(l.priceKobo * l.qty)}</p>
+
+            {(options.length > 0 || l.note || l.allergy || l.cutlery) && (
+              <div className="mt-2 space-y-1.5 border-t border-dashed border-border pt-2">
+                {options.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {options.map((o) => (
+                      <span key={o.optionId} className="rounded-full bg-lilac px-2.5 py-1 text-[11px] font-semibold text-plum">
+                        + {o.name}{o.priceKobo > 0 ? ` · ${fmt(o.priceKobo)}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {l.cutlery && (
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                    <UtensilsCrossed className="h-3 w-3" aria-hidden="true" />
+                    Cutlery included
+                  </p>
+                )}
+                {l.allergy && (
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-saffron">
+                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                    Allergy: {l.allergy}
+                  </p>
+                )}
+                {l.note && (
+                  <p className="text-[11px] italic text-muted-foreground">“{l.note}”</p>
+                )}
+              </div>
+            )}
+
+            <Link
+              to={`/item/${l.itemId}?line=${encodeURIComponent(l.key)}`}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-royal underline underline-offset-2"
+            >
+              <PencilLine className="h-3 w-3" aria-hidden="true" />
+              Edit toppings & notes
+            </Link>
           </li>
-        ))}
+          )
+        })}
       </ul>
       <div className="lg:sticky lg:top-24">
       <div className="mt-5 rounded-2xl border border-border bg-card p-4 lg:mt-2">
