@@ -1,15 +1,16 @@
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, Flame, Heart } from 'lucide-react'
+import { ArrowLeft, Flame, Heart, Star } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { AddButton, DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { AddButton, DishArt, DishImage, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
 
 export default function RestaurantPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const { count, totalKobo, session } = useStore()
   const restaurantQuery = trpc.catalog.restaurant.useQuery({ slug: slug ?? '' }, { enabled: !!slug })
+  const reviewsQuery = trpc.reviews.forMerchant.useQuery({ slug: slug ?? '' }, { enabled: !!slug })
   const favoritesQuery = trpc.favorites.ids.useQuery(undefined, { enabled: !!session })
   const utils = trpc.useUtils()
   const toggle = trpc.favorites.toggle.useMutation({
@@ -109,6 +110,7 @@ export default function RestaurantPage() {
             <ul className="mt-1 divide-y divide-border">
               {g.items.map((m) => (
                 <li key={m.id} className="flex items-center justify-between gap-3 py-3.5">
+                  <DishImage src={m.photoUrl} seed={m.id} className="h-16 w-16 shrink-0 rounded-xl" />
                   <Link to={`/item/${m.id}`} state={{ slug: r.slug }} className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-plum">
                       {m.name}
@@ -124,6 +126,39 @@ export default function RestaurantPage() {
           </section>
         ))}
       </div>
+      <section className="mx-auto mt-8 w-full max-w-5xl px-4 md:px-8">
+        <h2 className="font-display text-sm font-extrabold uppercase tracking-[0.14em] text-royal">
+          Reviews{r.reviewCount > 0 ? ` · ${r.reviewCount.toLocaleString()}` : ''}
+        </h2>
+        {(reviewsQuery.data ?? []).length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
+            No written reviews yet — be the first after your order arrives.
+          </p>
+        ) : (
+          <ul className="mt-3 grid gap-3 md:grid-cols-2">
+            {(reviewsQuery.data ?? []).map((rv) => (
+              <li key={rv.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-extrabold text-plum">{rv.authorName}</p>
+                  <span className="flex items-center gap-0.5" aria-label={`${rv.rating} out of 5 stars`}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        className={`h-3.5 w-3.5 ${n <= rv.rating ? 'fill-saffron text-saffron' : 'text-lilac-deep'}`}
+                        aria-hidden="true"
+                      />
+                    ))}
+                  </span>
+                </div>
+                {rv.comment && <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{rv.comment}</p>}
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {new Date(rv.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {count > 0 && (
         <Link
           to="/cart"
