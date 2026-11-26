@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ArrowRight, Loader2, LocateFixed, MapPin } from 'lucide-react'
+import { ArrowRight, Loader2, LocateFixed, MapPin, WifiOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
@@ -81,6 +81,20 @@ export default function LocationPage() {
 
       {areasQuery.isLoading ? (
         <LoadingBlock label="Loading Abuja zones…" />
+      ) : areasQuery.isError ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-lilac/25 p-6 text-center">
+          <WifiOff className="mx-auto h-6 w-6 text-lilac/60" aria-hidden="true" />
+          <p className="mt-2 text-sm font-bold text-lilac">Could not load the zones</p>
+          <p className="mt-1 text-xs leading-relaxed text-lilac/60">
+            The server is waking up or your connection dropped — try again.
+          </p>
+          <button
+            onClick={() => areasQuery.refetch()}
+            className="mt-4 rounded-full bg-saffron px-6 py-2.5 text-xs font-bold text-plum-deep transition-transform active:scale-95"
+          >
+            Retry
+          </button>
+        </div>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Delivery zone">
           {(areasQuery.data ?? []).map((a) => (

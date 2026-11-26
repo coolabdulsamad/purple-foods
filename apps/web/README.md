@@ -32,7 +32,15 @@ Canonical DDL + seeds: `infra/db/migrations/` (repo root) —
   `notifications`
 
 Migrations are applied through the Neon guided-migration flow (temp branch →
-verify → apply), not from the app. `db/seed.ts` is intentionally a no-op.
+verify → apply). `db/seed.ts` is intentionally a no-op.
+
+**Boot-time self-heal:** copies of all five migrations also live in
+`db/migrations/` and are embedded in the API bundle (esbuild `--loader:.sql=text`).
+At production boot, `api/lib/migrate.ts` checks a `_pf_migrations` ledger:
+a fresh/empty database (e.g. a platform-provisioned Postgres that never saw
+the Neon flow) is migrated and seeded automatically; a database that already
+has the schema is baselined and untouched. Failures are logged, never fatal —
+`GET /api/health` reports `{ ok, db, detail }` for instant diagnosis.
 
 ## Pages
 
