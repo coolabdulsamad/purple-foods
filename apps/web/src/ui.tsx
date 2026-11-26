@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Bell, ChevronDown, Home, Loader2, MapPin, Minus, Plus, ReceiptText, Search, ShoppingBag, Star, User, WifiOff } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from './store'
@@ -215,7 +215,7 @@ export function TopBar() {
                   to="/auth"
                   className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
                     onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
-                    }`}
+                  }`}
                 >
                   Sign in
                 </Link>
@@ -223,7 +223,7 @@ export function TopBar() {
                   to="/auth/signup"
                   className={`hidden rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:block ${
                     onDark ? 'bg-saffron text-plum-deep' : 'bg-royal text-lilac hover:bg-plum'
-                    }`}
+                  }`}
                 >
                   Sign up
                 </Link>
@@ -333,6 +333,19 @@ export function Footer() {
 
 export function AddButton({ item, r }: { item: MenuItemDto; r: RestaurantDto }) {
   const { lines, add, setQty } = useStore()
+  const navigate = useNavigate()
+  // Items with topping groups are configured on the item page — a bare
+  // quick-add would skip toppings, notes and allergies.
+  if ((item.optionGroups ?? []).length > 0) {
+    return (
+      <button
+        onClick={() => navigate(`/item/${item.id}`)}
+        className="rounded-full bg-royal px-4 py-2 text-xs font-bold text-lilac transition-transform duration-150 hover:bg-plum active:scale-95"
+      >
+        CUSTOMIZE · {fmt(item.priceKobo)}+
+      </button>
+    )
+  }
   const line = lines.find((l) => l.key === `${r.id}:${item.id}`)
   if (!line) {
     return (
