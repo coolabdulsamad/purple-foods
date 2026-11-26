@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Flame, Search, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
-import { DishArt, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
 
 const SUGGESTIONS = ['Suya', 'Amala', 'Shawarma', 'Jollof', 'Chapman', 'Burger', 'Pepper soup']
 
@@ -57,7 +57,17 @@ export default function SearchPage() {
 
       {needle && (itemsQuery.isLoading || restaurantsQuery.isLoading) && <LoadingBlock label="Searching…" />}
 
-      {needle && !itemsQuery.isLoading && (
+      {needle && (itemsQuery.isError || restaurantsQuery.isError) && !itemsQuery.isLoading && !restaurantsQuery.isLoading && (
+        <ErrorBlock
+          message="Search is unavailable right now"
+          onRetry={() => {
+            itemsQuery.refetch()
+            restaurantsQuery.refetch()
+          }}
+        />
+      )}
+
+      {needle && !itemsQuery.isLoading && !itemsQuery.isError && (
         <>
           {results.restaurants.length > 0 && (
             <section className="mt-6">
