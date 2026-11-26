@@ -30,11 +30,14 @@ Canonical DDL + seeds: `infra/db/migrations/` (repo root) —
 - `0005_full_auth.sql` — email + Google auth (nullable phone, `password_hash`,
   `google_sub`, `avatar_url`, partial unique indexes), `addresses`, `favorites`,
   `notifications`
+- `0006_cities_geo.sql` — multi-city + geo: `lat`/`lng` on cities, areas and
+  merchant backfills; Lagos, Port Harcourt, Ibadan, Kano and Enugu added with
+  19 new delivery zones (25 zones across 6 cities, all idempotent)
 
 Migrations are applied through the Neon guided-migration flow (temp branch →
 verify → apply). `db/seed.ts` is intentionally a no-op.
 
-**Boot-time self-heal:** copies of all five migrations also live in
+**Boot-time self-heal:** copies of all six migrations also live in
 `db/migrations/` and are embedded in the API bundle (esbuild `--loader:.sql=text`).
 At production boot, `api/lib/migrate.ts` checks a `_pf_migrations` ledger:
 a fresh/empty database (e.g. a platform-provisioned Postgres that never saw
@@ -59,6 +62,26 @@ Restaurant detail, Item detail, Category, Cart, Checkout, Order success,
 Orders, Order tracking, Account, Edit profile, Addresses, Favorites, Promos,
 Notifications, Help — plus `/welcome` intro, `/location` area picker and the
 auth pages, still reachable directly but never forced.
+
+## Location & maps
+
+- **Location dialog** — pops over Home on first visit (and from the top-bar
+  area button): "Use my current location" (browser geolocation →
+  `catalog.nearestArea`, haversine over all active zones), zone/city search,
+  an interactive zone map, and every city grouped with **Live / Launching
+  soon** badges (live = has listed kitchens). The same picker powers the
+  `/location` onboarding page (`src/components/LocationPicker.tsx`).
+- **Area-aware feed** — Home and Restaurants filter kitchens by the selected
+  zone (`catalog.restaurants { areaId? }`); zones with no kitchens yet get an
+  honest "launching soon" empty state with a browse-everything escape.
+- **Live order tracking** — the tracking page embeds a Leaflet map
+  (`src/components/TrackingMap.tsx`): kitchen pin, customer pin, dashed route,
+  and a rider marker that glides along the route as the order moves
+  received → preparing → on_the_way → delivered (coords ride on `OrderDto`).
+- **Tiles** — OpenStreetMap by default (key-free). Set
+  `VITE_GOOGLE_MAPS_API_KEY` and every map switches to Google Maps tiles;
+  geolocation, search and tracking work identically either way
+  (`src/lib/map.ts`).
 
 ## Auth (phone OTP + email + Google)
 
