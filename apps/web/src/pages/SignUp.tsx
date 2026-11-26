@@ -6,6 +6,7 @@ import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { GoogleButton } from '../components/GoogleButton'
 import { FacebookButton } from '../components/FacebookButton'
+import { PasswordInput, passwordValid } from '../components/PasswordInput'
 import { Grain, Mono } from '../ui'
 import type { AuthResult } from '../types'
 
@@ -39,7 +40,7 @@ export default function SignUpPage() {
     if (form.name.trim().length < 2) e.name = 'Tell us your name'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = 'Enter a valid email'
     if (form.phone.replace(/\D/g, '').length < 10) e.phone = 'Enter a valid Nigerian number'
-    if (form.password.length < 8) e.password = 'At least 8 characters'
+    if (!passwordValid(form.password)) e.password = 'Meet every password rule below'
     setErrors(e)
     if (Object.keys(e).length) return
     register.mutate({
@@ -104,7 +105,20 @@ export default function SignUpPage() {
           {field('name', 'Full name', { placeholder: 'Adaeze Obi', autoComplete: 'name' })}
           {field('email', 'Email', { type: 'email', placeholder: 'you@example.com', autoComplete: 'email' })}
           {field('phone', 'Phone', { inputMode: 'tel', placeholder: '0803 000 0000', autoComplete: 'tel' })}
-          {field('password', 'Password', { type: 'password', placeholder: 'At least 8 characters', autoComplete: 'new-password' })}
+          <div>
+            <label htmlFor="su-password" className="text-xs font-bold text-plum">Password</label>
+            <div className="mt-1">
+              <PasswordInput
+                id="su-password"
+                value={form.password}
+                onChange={(v) => setForm({ ...form, password: v })}
+                placeholder="Create a strong password"
+                autoComplete="new-password"
+                showStrength
+              />
+            </div>
+            {errors.password && <p className="mt-1 text-xs font-semibold text-destructive">{errors.password}</p>}
+          </div>
           <button
             onClick={submit}
             disabled={register.isPending}

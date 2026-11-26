@@ -6,6 +6,7 @@ import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { GoogleButton } from '../components/GoogleButton'
 import { FacebookButton } from '../components/FacebookButton'
+import { PasswordInput } from '../components/PasswordInput'
 import { Grain, Mono } from '../ui'
 import type { AuthResult } from '../types'
 
@@ -132,14 +133,11 @@ export default function SignInPage() {
               placeholder="Email address"
               className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none placeholder:text-plum/40 focus:border-royal"
             />
-            <input
+            <PasswordInput
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
+              onChange={setPassword}
               autoComplete="current-password"
-              aria-label="Password"
               placeholder="Password"
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none placeholder:text-plum/40 focus:border-royal"
             />
             <button
               onClick={submitEmail}
