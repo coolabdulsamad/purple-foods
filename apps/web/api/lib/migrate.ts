@@ -35,9 +35,10 @@ const MIGRATIONS: ReadonlyArray<readonly [string, string]> = [
 
 export async function ensureSchema(): Promise<void> {
   if (!env.databaseUrl) {
-    log.error("ensureSchema skipped — DATABASE_URL is not set");
+    log.error("ensureSchema skipped — PF_DATABASE_URL / DATABASE_URL are not set");
     return;
   }
+  log.info("ensureSchema target", { host: env.databaseHost });
   const pool = new Pool({ connectionString: env.databaseUrl });
   try {
     await pool.query(

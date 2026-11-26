@@ -95,6 +95,9 @@ app.get("/api/health", async (c) => {
     {
       ok: db === "up",
       db,
+      // Which database the server is actually talking to (host only, never
+      // credentials) — the first thing to check when a deploy 500s.
+      host: env.databaseHost || null,
       ...(db === "down" && detail ? { detail } : {}),
       time: new Date().toISOString(),
     },

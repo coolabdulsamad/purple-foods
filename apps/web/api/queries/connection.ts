@@ -12,6 +12,9 @@ neonConfig.webSocketConstructor = ws;
 let instance: ReturnType<typeof createDb> | undefined;
 
 function createDb() {
+  if (!env.databaseUrl) {
+    throw new Error("Database is not configured (PF_DATABASE_URL / DATABASE_URL are both empty)");
+  }
   const pool = new Pool({ connectionString: env.databaseUrl });
   return drizzle(pool, { schema });
 }
