@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   CreateOrderResult,
   OrderDto,
@@ -18,9 +18,15 @@ import {
   orderEvents,
   orderItems,
   orders,
+  promoCodes,
+  promoRedemptions,
+  reviews,
+  transactions,
   users,
 } from "@db/schema";
 import { getDb } from "./connection";
+import { notifyReferrer, resolvePromo } from "./promos";
+import { recordOrderTransaction } from "./payments";
 
 // ── Phone normalization ────────────────────────────────────────────
 // Nigeria-first: accept +2348012345678, 2348012345678, or 08012345678
@@ -65,6 +71,8 @@ export interface CreateOrderInput {
   areaId: string;
   merchantSlug: string;
   paymentMethod: PaymentMethod;
+  /** Optional promo/referral code — validated and priced server-side. */
+  promoCode?: string;
   items: CreateOrderItemInput[];
 }
 
@@ -251,16 +259,37 @@ export async function createOrder(
 
   const subtotal = lines.reduce((sum, l) => sum + l.lineTotalKobo, BigInt(0));
   const deliveryFee = merchant.deliveryFeeKobo ?? area.baseDeliveryFeeKobo;
-  const total = subtotal + deliveryFee;
+
+  // ── Promo / referral code (server-side pricing, always) ─────────
+  // A signed-in customer is guaranteed by protectedQuery, so promo
+  // redemption rules (one per user, min order, expiry) can be enforced.
+  let promo: Awaited<ReturnType<typeof resolvePromo>> | null = null;
+  if (input.promoCode?.trim() && sessionUser) {
+    promo = await resolvePromo(
+      sessionUser.id,
+      input.promoCode,
+      subtotal,
+      deliveryFee,
+    );
+  }
+  const discount = promo?.discountKobo ?? BigInt(0);
+  const total = subtotal + deliveryFee - discount;
+  if (total < BigInt(0)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That code can't be applied to this order.",
+    });
+  }
 
   // ── Write order + items + audit event + ledger atomically ───────
   // human_ref has a unique constraint; retry a handful of times on the
   // (rare) collision.
   let lastError: unknown;
+  let orderCustomerId = "";
   for (let attempt = 0; attempt < 5; attempt++) {
     const humanRef = newHumanRef();
     try {
-      return await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         // Signed-in: pin the order to the session user. Guest: find or
         // create the customer by phone; refresh name/last_seen either way.
         let customerId: string;
@@ -305,6 +334,7 @@ export async function createOrder(
             customerId = created[0]!.id;
           }
         }
+        orderCustomerId = customerId;
 
         const [order] = await tx
           .insert(orders)
@@ -318,9 +348,11 @@ export async function createOrder(
             // Card gateways land in the payments phase; COD stays pending
             // until the rider collects.
             paymentStatus: "pending",
+            paymentRef: null,
+            promoCode: promo?.code ?? null,
             subtotalKobo: subtotal,
             deliveryFeeKobo: deliveryFee,
-            discountKobo: BigInt(0),
+            discountKobo: discount,
             totalKobo: total,
             deliveryName: name,
             deliveryPhone: phone,
@@ -355,6 +387,27 @@ export async function createOrder(
               : `Order placed — ${input.paymentMethod} (gateway pending)`,
         });
 
+        // Promo redemption: store codes count usage; referral codes pin
+        // the referrer onto the customer's account (first use only).
+        if (promo) {
+          if (promo.promoId) {
+            await tx.insert(promoRedemptions).values({
+              promoId: promo.promoId,
+              userId: customerId,
+              orderId: order!.id,
+            });
+            await tx
+              .update(promoCodes)
+              .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+              .where(eq(promoCodes.id, promo.promoId));
+          } else if (promo.referrerId) {
+            await tx
+              .update(users)
+              .set({ referredBy: promo.referrerId, updatedAt: new Date() })
+              .where(eq(users.id, customerId));
+          }
+        }
+
         // Balanced ledger pair: customer owes, platform holds the claim.
         await tx.insert(ledgerEntries).values([
           {
@@ -383,6 +436,24 @@ export async function createOrder(
           paymentStatus: "pending" as const,
         };
       });
+
+      // Post-commit side effects (not transactional by design):
+      // - COD orders land on the Transactions page immediately (card
+      //   orders get their transaction row when the gateway charge is
+      //   initialized, so we never double-record)
+      // - the referrer gets a thank-you when their code converts
+      if (input.paymentMethod === "cod") {
+        await recordOrderTransaction({
+          userId: orderCustomerId,
+          orderId: result.orderId,
+          provider: "cod",
+          amountKobo: BigInt(result.totalKobo),
+        });
+      }
+      if (promo?.referrerId) {
+        await notifyReferrer(promo.referrerId, name).catch(() => undefined);
+      }
+      return result;
     } catch (err) {
       lastError = err;
       // Only retry on human_ref unique collisions; rethrow anything else.
@@ -411,6 +482,18 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
     .limit(50);
 
   if (orderRows.length === 0) return [];
+
+  // Which of these orders has this customer already reviewed?
+  const reviewRows = await db
+    .select({ orderId: reviews.orderId })
+    .from(reviews)
+    .where(
+      inArray(
+        reviews.orderId,
+        orderRows.map((r) => r.order.id),
+      ),
+    );
+  const reviewedIds = new Set(reviewRows.map((r) => r.orderId));
 
   const itemRows = await db
     .select()
@@ -447,7 +530,10 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
     paymentStatus: o.paymentStatus,
     subtotalKobo: Number(o.subtotalKobo),
     deliveryFeeKobo: Number(o.deliveryFeeKobo),
+    discountKobo: Number(o.discountKobo),
     totalKobo: Number(o.totalKobo),
+    promoCode: o.promoCode,
+    reviewed: reviewedIds.has(o.id),
     placedAt: o.placedAt.toISOString(),
     merchantName: m.name,
     merchantSlug: m.slug,
@@ -463,4 +549,60 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
     deliveryAreaLng: a.lng,
     items: itemsByOrder.get(o.id) ?? [],
   }));
+}
+
+// ── Customer confirms delivery ─────────────────────────────────────
+// Until the rider app ships, the customer closes the loop: when the
+// food arrives they confirm, which settles COD payment and unlocks the
+// review prompt.
+export async function confirmDelivery(
+  userId: string,
+  orderId: string,
+): Promise<{ ok: true }> {
+  const db = getDb();
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!order || order.customerId !== userId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Order not found." });
+  }
+  if (order.status === "delivered") return { ok: true };
+  if (order.status === "cancelled") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This order was cancelled.",
+    });
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(orders)
+      .set({
+        status: "delivered",
+        deliveredAt: now,
+        // Cash changes hands at the door — confirming delivery settles it.
+        paymentStatus: order.paymentMethod === "cod" ? "paid" : order.paymentStatus,
+        updatedAt: now,
+      })
+      .where(eq(orders.id, order.id));
+
+    await tx.insert(orderEvents).values({
+      orderId: order.id,
+      status: "delivered",
+      actorType: "customer",
+      actorId: userId,
+      note: "Customer confirmed delivery",
+    });
+
+    if (order.paymentMethod === "cod") {
+      await tx
+        .update(transactions)
+        .set({ status: "success", paidAt: now })
+        .where(eq(transactions.orderId, order.id));
+    }
+  });
+  return { ok: true };
 }
