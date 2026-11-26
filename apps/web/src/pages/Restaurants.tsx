@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
 import { ArrowDownWideNarrow, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
 
 type Sort = 'rating' | 'eta' | 'fee'
 
@@ -87,30 +86,10 @@ export default function RestaurantsPage() {
           </button>
         </div>
       ) : (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((r) => (
             <li key={r.id}>
-              <Link
-                to={`/r/${r.slug}`}
-                className="block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.99]"
-              >
-                <DishArt seed={r.id} className="h-36 w-full" />
-                <div className="p-3.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-display text-base font-extrabold tracking-tight text-plum">{r.name}</h3>
-                    <Mono className="shrink-0 text-muted-foreground">{r.areaName.toUpperCase()}</Mono>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-                    <Mono>[{r.etaMin}–{r.etaMax} MIN]</Mono>
-                    <Mono>[<Rating value={r.rating} /> · {r.reviewCount.toLocaleString()}]</Mono>
-                    <Mono>[{fmt(r.deliveryFeeKobo)} DELIVERY]</Mono>
-                    {!r.isOpen && <Mono className="text-destructive">[CLOSED]</Mono>}
-                  </div>
-                  {r.promo && (
-                    <p className="mt-2 inline-block rounded-full bg-saffron-soft px-2.5 py-1 text-[11px] font-bold text-plum">{r.promo}</p>
-                  )}
-                </div>
-              </Link>
+              <MerchantCard r={r} />
             </li>
           ))}
         </ul>

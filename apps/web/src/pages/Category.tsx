@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
-import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
 
 export default function CategoryPage() {
   const { name } = useParams()
@@ -42,23 +42,7 @@ export default function CategoryPage() {
         <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {matches.map((r) => (
             <li key={r.id}>
-              <Link
-                to={`/r/${r.slug}`}
-                className="block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.99]"
-              >
-                <DishArt seed={r.id} className="h-36 w-full" />
-                <div className="p-3.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-display text-base font-extrabold tracking-tight text-plum">{r.name}</h3>
-                    <Mono className="shrink-0 text-muted-foreground">{r.areaName.toUpperCase()}</Mono>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-                    <Mono>[{r.etaMin}–{r.etaMax} MIN]</Mono>
-                    <Mono>[<Rating value={r.rating} />]</Mono>
-                    <Mono>[{fmt(r.deliveryFeeKobo)} DELIVERY]</Mono>
-                  </div>
-                </div>
-              </Link>
+              <MerchantCard r={r} />
             </li>
           ))}
         </ul>
