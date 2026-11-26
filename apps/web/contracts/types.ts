@@ -63,6 +63,21 @@ export interface RestaurantDto {
   isOpen: boolean;
 }
 
+export interface MenuOptionDto {
+  id: string;
+  name: string;
+  priceKobo: number;
+}
+
+/** A "choose up to N" add-on group on a menu item (toppings, extras…). */
+export interface MenuOptionGroupDto {
+  id: string;
+  name: string;
+  minSelect: number;
+  maxSelect: number;
+  options: MenuOptionDto[];
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
@@ -71,10 +86,19 @@ export interface MenuItemDto {
   category: string;
   isSpicy: boolean;
   isPopular: boolean;
+  /** Topping/add-on groups; empty when the item has none (and in the
+   *  flat search index, where groups are loaded via the restaurant). */
+  optionGroups: MenuOptionGroupDto[];
 }
 
 export interface RestaurantDetailDto extends RestaurantDto {
   menu: MenuItemDto[];
+}
+
+export interface OrderItemOptionDto {
+  group: string;
+  name: string;
+  priceKobo: number;
 }
 
 export interface OrderItemDto {
@@ -82,6 +106,11 @@ export interface OrderItemDto {
   quantity: number;
   unitPriceKobo: number;
   lineTotalKobo: number;
+  /** Snapshot of the toppings chosen at order time. */
+  options: OrderItemOptionDto[];
+  note: string;
+  allergy: string;
+  cutlery: boolean;
 }
 
 export interface OrderDto {
