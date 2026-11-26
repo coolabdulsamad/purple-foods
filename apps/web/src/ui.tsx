@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router'
 import { Bell, ChevronDown, Home, Loader2, MapPin, Minus, Plus, ReceiptText, Search, ShoppingBag, Star, User, WifiOff } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from './store'
+import { LocationDialog } from './components/LocationDialog'
 import type { MenuItemDto, RestaurantDto } from './types'
 
 /** Format kobo as naira: 280000 → "₦2,800" (kobo is the app-wide money unit). */
@@ -109,46 +110,6 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry: () 
   )
 }
 
-function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { area, setArea } = useStore()
-  const areasQuery = trpc.catalog.areas.useQuery(undefined, { enabled: open })
-  useEffect(() => {
-    if (!open) return
-    const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', f)
-    return () => window.removeEventListener('keydown', f)
-  }, [open, onClose])
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-label="Choose delivery area">
-      <button className="absolute inset-0 bg-plum-deep/60" onClick={onClose} aria-label="Close area picker" />
-      <div className="relative w-full max-w-[480px] rounded-t-3xl bg-card p-5 pb-8 md:rounded-3xl md:pb-5">
-        <p className="font-display text-lg font-bold text-plum">Delivering to</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">Pick your Abuja zone — menus and fees follow it.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
-          {(areasQuery.data ?? []).map((a) => (
-            <button
-              key={a.id}
-              onClick={() => {
-                setArea({ id: a.id, name: a.name })
-                onClose()
-              }}
-              className={`rounded-xl border px-3 py-3 text-left text-sm font-medium transition-colors duration-150 ${
-                a.id === area?.id ? 'border-royal bg-lilac text-plum' : 'border-border bg-background hover:bg-lilac'
-              }`}
-            >
-              <MapPin className="mb-1 h-4 w-4 text-royal" aria-hidden="true" />
-              {a.name}
-            </button>
-          ))}
-          {areasQuery.isLoading && <p className="col-span-2 py-4 text-center text-xs text-muted-foreground md:col-span-3">Loading areas…</p>}
-          {areasQuery.isError && <p className="col-span-2 py-4 text-center text-xs font-semibold text-destructive md:col-span-3">Could not load areas — check your connection and retry.</p>}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function TopBar() {
   const { area, setArea, session, count } = useStore()
   const areasQuery = trpc.catalog.areas.useQuery()
@@ -157,16 +118,15 @@ export function TopBar() {
     refetchInterval: 30000,
   })
   const unread = (notificationsQuery.data ?? []).filter((n) => !n.readAt).length
-  // Default to the first live area until the customer picks one, and
-  // re-sync a stored area's name from the API (names can change server-side).
+  // Re-sync a stored area's label from the API (names/cities can change
+  // server-side). There is deliberately no auto-default: the Home page pops
+  // the location dialog until the customer picks a zone themselves.
   useEffect(() => {
-    if (!areasQuery.data?.length) return
-    if (!area) {
-      setArea({ id: areasQuery.data[0].id, name: areasQuery.data[0].name })
-      return
-    }
+    if (!area || !areasQuery.data?.length) return
     const fresh = areasQuery.data.find((a) => a.id === area.id)
-    if (fresh && fresh.name !== area.name) setArea({ id: fresh.id, name: fresh.name })
+    if (fresh && (fresh.name !== area.name || fresh.cityName !== area.cityName)) {
+      setArea({ id: fresh.id, name: fresh.name, cityName: fresh.cityName })
+    }
   }, [area, areasQuery.data, setArea])
   const [scrolled, setScrolled] = useState(false)
   const [sheet, setSheet] = useState(false)
@@ -196,7 +156,7 @@ export function TopBar() {
             aria-label={`Delivery area: ${area?.name ?? 'not set'}. Tap to change`}
           >
             <MapPin className={`h-4 w-4 shrink-0 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
-            <span className="truncate">{area?.name ?? 'Abuja'}</span>
+            <span className="truncate">{area ? `${area.name}${area.cityName ? `, ${area.cityName}` : ''}` : 'Choose location'}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
           </button>
           <Link
@@ -255,7 +215,7 @@ export function TopBar() {
                   to="/auth"
                   className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
                     onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
-                  }`}
+                    }`}
                 >
                   Sign in
                 </Link>
@@ -263,7 +223,7 @@ export function TopBar() {
                   to="/auth/signup"
                   className={`hidden rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:block ${
                     onDark ? 'bg-saffron text-plum-deep' : 'bg-royal text-lilac hover:bg-plum'
-                  }`}
+                    }`}
                 >
                   Sign up
                 </Link>
@@ -272,7 +232,7 @@ export function TopBar() {
           </div>
         </div>
       </header>
-      <AreaSheet open={sheet} onClose={() => setSheet(false)} />
+      <LocationDialog open={sheet} onClose={() => setSheet(false)} />
     </>
   )
 }

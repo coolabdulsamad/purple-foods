@@ -1,15 +1,32 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight, Search } from 'lucide-react'
+import { ArrowRight, MapPin, Search } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
+import { LocationDialog } from '../components/LocationDialog'
 import { DishArt, ErrorBlock, Grain, LoadingBlock, Marquee, Mono, Rating, fmt } from '../ui'
+import heroFood from '../assets/hero-food.svg'
 
 export default function HomePage() {
   const { area, session } = useStore()
   const [cat, setCat] = useState('All')
+  const [showAll, setShowAll] = useState(false)
+  const [locOpen, setLocOpen] = useState(false)
+  const askedRef = useRef(false)
   const navigate = useNavigate()
-  const restaurantsQuery = trpc.catalog.restaurants.useQuery()
+
+  // First visit (no zone picked yet): pop the location dialog so the feed
+  // immediately reflects where the customer actually is. Once dismissed or
+  // answered we don't auto-pop again — the TopBar button reopens it.
+  useEffect(() => {
+    if (askedRef.current) return
+    askedRef.current = true
+    if (!area) setLocOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const areaId = area && !showAll ? area.id : undefined
+  const restaurantsQuery = trpc.catalog.restaurants.useQuery({ areaId })
 
   const categories = useMemo(() => {
     const set = new Set<string>()
@@ -50,56 +67,83 @@ export default function HomePage() {
   const firstName = session?.user.name?.split(' ')[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const cityLabel = area?.cityName ?? 'Nigeria'
 
   return (
     <div>
+      <LocationDialog open={locOpen} onClose={() => setLocOpen(false)} />
+
       <section className="relative overflow-hidden bg-plum-deep text-lilac">
         <Grain />
-        <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-24 md:px-8 md:pb-16 md:pt-36">
-          <Mono className="text-saffron">[ABUJA · {(area?.name ?? 'ABUJA').toUpperCase()}]</Mono>
-          <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.02] tracking-tight md:text-6xl">
-            {firstName ? `${greeting}, ${firstName}.` : 'Hungry?'}
-            <br />
-            Abuja is <span className="text-saffron">served hot.</span>
-          </h1>
-          <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/80 md:max-w-[46ch] md:text-base">
-            Restaurants, grills and bukas around you — tracked from flame to your doorstep.
-          </p>
-          <button
-            onClick={() => navigate('/search')}
-            className="mt-5 flex w-full items-center gap-2 rounded-2xl bg-lilac px-4 py-3 text-left text-plum shadow-lg md:max-w-xl md:py-4"
-          >
-            <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
-            <span className="text-sm font-medium text-plum/50">Search amala, suya, shawarma…</span>
-          </button>
-          {!session && (
-            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <Link
-                to="/auth/signup"
-                className="rounded-full bg-saffron px-5 py-2.5 text-sm font-bold text-plum-deep transition-transform active:scale-95"
+        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 pb-10 pt-24 md:grid-cols-[1.1fr_1fr] md:items-center md:px-8 md:pb-16 md:pt-36">
+          <div>
+            <Mono className="text-saffron">[{cityLabel.toUpperCase()}{area ? ` · ${area.name.toUpperCase()}` : ''}]</Mono>
+            <h1 className="mt-2 font-display text-4xl font-extrabold leading-[1.02] tracking-tight md:text-6xl">
+              {firstName ? `${greeting}, ${firstName}.` : 'Hungry?'}
+              <br />
+              {cityLabel} is <span className="text-saffron">served hot.</span>
+            </h1>
+            <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-lilac/80 md:max-w-[46ch] md:text-base">
+              Restaurants, grills and bukas around you — tracked live on the map from flame to your doorstep.
+            </p>
+            <button
+              onClick={() => navigate('/search')}
+              className="mt-5 flex w-full items-center gap-2 rounded-2xl bg-lilac px-4 py-3 text-left text-plum shadow-lg md:max-w-xl md:py-4"
+            >
+              <Search className="h-4 w-4 shrink-0 text-royal" aria-hidden="true" />
+              <span className="text-sm font-medium text-plum/50">Search amala, suya, shawarma…</span>
+            </button>
+            {!area && (
+              <button
+                onClick={() => setLocOpen(true)}
+                className="mt-3 flex items-center gap-1.5 rounded-full border border-saffron/50 px-4 py-2 text-xs font-bold text-saffron transition-colors hover:bg-saffron/10"
               >
-                Create account
-              </Link>
-              <Link
-                to="/auth"
-                className="rounded-full border border-lilac/30 px-5 py-2.5 text-sm font-bold text-lilac transition-colors hover:bg-lilac/10"
-              >
-                Sign in
-              </Link>
-              <span className="text-xs text-lilac/60">or order as a guest — no account needed</span>
-            </div>
-          )}
-          <div className="mt-10 hidden gap-10 md:flex">
-            {[
-              [`${restaurantsQuery.data?.length ?? '…'}`, 'kitchens live'],
-              ['12-min', 'warmth SLA'],
-              ['₦0', 'first delivery fee'],
-            ].map(([v, l]) => (
-              <div key={l}>
-                <p className="font-display text-3xl font-extrabold text-saffron">{v}</p>
-                <Mono className="mt-1 block text-lilac/60">[{l.toUpperCase()}]</Mono>
+                <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                Set your delivery area
+              </button>
+            )}
+            {!session && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Link
+                  to="/auth/signup"
+                  className="rounded-full bg-saffron px-5 py-2.5 text-sm font-bold text-plum-deep transition-transform active:scale-95"
+                >
+                  Create account
+                </Link>
+                <Link
+                  to="/auth"
+                  className="rounded-full border border-lilac/30 px-5 py-2.5 text-sm font-bold text-lilac transition-colors hover:bg-lilac/10"
+                >
+                  Sign in
+                </Link>
+                <span className="text-xs text-lilac/60">or order as a guest — no account needed</span>
               </div>
-            ))}
+            )}
+            <div className="mt-10 hidden gap-10 md:flex">
+              {[
+                [`${restaurantsQuery.data?.length ?? '…'}`, 'kitchens live'],
+                ['12-min', 'warmth SLA'],
+                ['₦0', 'first delivery fee'],
+              ].map(([v, l]) => (
+                <div key={l}>
+                  <p className="font-display text-3xl font-extrabold text-saffron">{v}</p>
+                  <Mono className="mt-1 block text-lilac/60">[{l.toUpperCase()}]</Mono>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hero plate — desktop only; mobile keeps the tight single column. */}
+          <div className="relative hidden md:block">
+            <div className="absolute -inset-6 rounded-[2.5rem] bg-royal/40 blur-2xl" aria-hidden="true" />
+            <img
+              src={heroFood}
+              alt="A spread of Nigerian dishes — jollof rice, suya, amala and grilled chicken"
+              className="relative aspect-[5/4] w-full rotate-[1.5deg] rounded-[2rem] border-4 border-lilac/15 object-cover shadow-2xl"
+            />
+            <div className="absolute -bottom-4 -left-4 -rotate-[2deg] rounded-2xl bg-saffron px-4 py-2.5 shadow-xl">
+              <Mono className="block text-plum-deep">[FLAME → DOOR · LIVE MAP]</Mono>
+            </div>
           </div>
         </div>
       </section>
@@ -139,13 +183,20 @@ export default function HomePage() {
       </div>
 
       <section id="feed" className="mx-auto mt-4 w-full max-w-7xl px-4 md:px-8">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-xl font-extrabold tracking-tight text-plum">
-            {cat === 'All' ? 'Near you' : cat}
+            {cat !== 'All' ? cat : area && !showAll ? `Near you in ${area.name}` : 'All kitchens'}
           </h2>
-          <Link to="/restaurants" className="text-xs font-bold text-royal underline underline-offset-2">
-            See all
-          </Link>
+          <div className="flex items-center gap-3">
+            {showAll && area && (
+              <button onClick={() => setShowAll(false)} className="text-xs font-bold text-royal underline underline-offset-2">
+                Back to {area.name}
+              </button>
+            )}
+            <Link to="/restaurants" className="text-xs font-bold text-royal underline underline-offset-2">
+              See all
+            </Link>
+          </div>
         </div>
         {restaurantsQuery.isLoading ? (
           <LoadingBlock label="Loading kitchens near you…" />
@@ -153,11 +204,25 @@ export default function HomePage() {
           <ErrorBlock message="Could not load restaurants." onRetry={() => restaurantsQuery.refetch()} />
         ) : filtered.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-border p-8 text-center">
-            <Search className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
-            <p className="mt-2 text-sm font-semibold text-plum">Nothing in this category yet</p>
-            <button onClick={() => setCat('All')} className="mt-3 rounded-full bg-plum px-4 py-2 text-xs font-bold text-lilac active:scale-95">
-              Show everything
-            </button>
+            <MapPin className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+            {cat === 'All' && area && !showAll ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-plum">We're not in {area.name} yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {area.cityName ?? 'Your city'} is launching soon — browse live kitchens in the meantime.
+                </p>
+                <button onClick={() => setShowAll(true)} className="mt-3 rounded-full bg-plum px-4 py-2 text-xs font-bold text-lilac active:scale-95">
+                  Browse all kitchens
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-sm font-semibold text-plum">Nothing in this category yet</p>
+                <button onClick={() => setCat('All')} className="mt-3 rounded-full bg-plum px-4 py-2 text-xs font-bold text-lilac active:scale-95">
+                  Show everything
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <ul className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

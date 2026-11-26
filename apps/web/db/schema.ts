@@ -9,6 +9,7 @@ import {
   boolean,
   char,
   check,
+  doublePrecision,
   index,
   integer,
   numeric,
@@ -66,6 +67,10 @@ export const cities = pgTable(
     state: text("state").notNull().default("FCT"),
     country: text("country").notNull().default("Nigeria"),
     isActive: boolean("is_active").notNull().default(true),
+    // City centre coordinates (0006) — used for map previews and
+    // nearest-area matching.
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -86,6 +91,9 @@ export const areas = pgTable(
       .default(BigInt(90000)),
     etaMinMinutes: integer("eta_min_minutes").notNull().default(20),
     etaMaxMinutes: integer("eta_max_minutes").notNull().default(35),
+    // Zone centre coordinates (0006) — delivery map + nearest-zone lookup.
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
