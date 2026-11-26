@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import { GoogleButton } from '../components/GoogleButton'
+import { FacebookButton } from '../components/FacebookButton'
 import { Grain, Mono } from '../ui'
 import type { AuthResult } from '../types'
 
@@ -88,6 +89,9 @@ export default function SignInPage() {
 
       <div className="mt-6 rounded-3xl bg-lilac p-4 text-plum shadow-xl">
         <GoogleButton onSuccess={landed} />
+        <div className="mt-2.5">
+          <FacebookButton onSuccess={landed} />
+        </div>
 
         <div className="my-4 flex items-center gap-3">
           <span className="h-px flex-1 bg-border" />
