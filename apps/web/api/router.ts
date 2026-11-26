@@ -77,7 +77,8 @@ const catalogRouter = createRouter({
 });
 
 const ordersRouter = createRouter({
-  create: publicQuery
+  // Signed-in customers only: checkout redirects guests to /auth first.
+  create: protectedQuery
     .input(
       z.object({
         customerName: z.string().min(1).max(120),
@@ -92,6 +93,10 @@ const ordersRouter = createRouter({
             z.object({
               menuItemId: z.string().uuid(),
               quantity: z.number().int().min(1).max(20),
+              optionIds: z.array(z.string().uuid()).max(20).default([]),
+              note: z.string().max(300).default(""),
+              allergy: z.string().max(200).default(""),
+              cutlery: z.boolean().default(false),
             }),
           )
           .min(1)
