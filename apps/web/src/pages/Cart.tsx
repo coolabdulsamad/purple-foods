@@ -3,7 +3,7 @@ import { AlertTriangle, Minus, PencilLine, Plus, ShoppingBag, Trash2, ArrowRight
 import { toast } from 'sonner'
 import { useStore } from '../store'
 import { cartLineUnitKobo } from '../types'
-import { DishArt, Mono, fmt } from '../ui'
+import { DishImage, Mono, fmt } from '../ui'
 
 export default function CartPage() {
   const { lines, subtotalKobo, deliveryFeeKobo, totalKobo, setQty, clear, cartRestaurant } = useStore()
@@ -48,7 +48,7 @@ export default function CartPage() {
                 className="flex min-w-0 flex-1 items-center gap-3"
                 aria-label={`Edit ${l.name}`}
               >
-                <DishArt seed={l.itemId} className="h-14 w-14 shrink-0 rounded-xl" />
+                <DishImage src={l.photoUrl} seed={l.itemId} className="h-14 w-14 shrink-0 rounded-xl" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-plum">{l.name}</p>
                   <p className="mt-0.5 font-mono text-xs text-muted-foreground">{fmt(unit)} each</p>

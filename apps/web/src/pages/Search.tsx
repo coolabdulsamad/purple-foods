@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Flame, Search, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
-import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { DishArt, DishImage, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
 
 const SUGGESTIONS = ['Suya', 'Amala', 'Shawarma', 'Jollof', 'Chapman', 'Burger', 'Pepper soup']
 
@@ -101,7 +101,8 @@ export default function SearchPage() {
                 {results.items.map((i) => (
                   <li key={i.id}>
                     <Link to={`/item/${i.id}`} className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-lilac/60">
-                      <div className="min-w-0">
+                      <DishImage src={i.photoUrl} seed={i.id} className="h-11 w-11 shrink-0 rounded-xl" />
+                      <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-1.5 truncate text-sm font-bold text-plum">
                           {i.name}
                           {i.isSpicy && <Flame className="h-3.5 w-3.5 shrink-0 text-saffron" aria-label="Spicy" />}
