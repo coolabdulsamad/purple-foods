@@ -120,12 +120,12 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open, onClose])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label="Choose delivery area">
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center md:p-6" role="dialog" aria-modal="true" aria-label="Choose delivery area">
       <button className="absolute inset-0 bg-plum-deep/60" onClick={onClose} aria-label="Close area picker" />
-      <div className="relative w-full max-w-[480px] rounded-t-3xl bg-card p-5 pb-8">
+      <div className="relative w-full max-w-[480px] rounded-t-3xl bg-card p-5 pb-8 md:rounded-3xl md:pb-5">
         <p className="font-display text-lg font-bold text-plum">Delivering to</p>
         <p className="mt-0.5 text-sm text-muted-foreground">Pick your Abuja zone — menus and fees follow it.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
           {(areasQuery.data ?? []).map((a) => (
             <button
               key={a.id}
@@ -141,8 +141,8 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
               {a.name}
             </button>
           ))}
-          {areasQuery.isLoading && <p className="col-span-2 py-4 text-center text-xs text-muted-foreground">Loading areas…</p>}
-          {areasQuery.isError && <p className="col-span-2 py-4 text-center text-xs font-semibold text-destructive">Could not load areas — check your connection and retry.</p>}
+          {areasQuery.isLoading && <p className="col-span-2 py-4 text-center text-xs text-muted-foreground md:col-span-3">Loading areas…</p>}
+          {areasQuery.isError && <p className="col-span-2 py-4 text-center text-xs font-semibold text-destructive md:col-span-3">Could not load areas — check your connection and retry.</p>}
         </div>
       </div>
     </div>
@@ -150,7 +150,7 @@ function AreaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 export function TopBar() {
-  const { area, setArea, session } = useStore()
+  const { area, setArea, session, count } = useStore()
   const areasQuery = trpc.catalog.areas.useQuery()
   const notificationsQuery = trpc.notifications.list.useQuery(undefined, {
     enabled: !!session,
@@ -178,40 +178,88 @@ export function TopBar() {
     window.addEventListener('scroll', f, { passive: true })
     return () => window.removeEventListener('scroll', f)
   }, [])
+  const initial = (session?.user.name ?? session?.user.email ?? 'P').charAt(0).toUpperCase()
   return (
     <>
       <header
-        className={`fixed left-1/2 top-0 z-40 w-full max-w-[480px] -translate-x-1/2 transition-colors duration-300 ${
+        className={`fixed inset-x-0 top-0 z-40 transition-colors duration-300 ${
           onDark ? 'bg-transparent text-lilac' : 'bg-lilac/95 text-plum shadow-sm backdrop-blur'
         }`}
       >
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 md:h-16 md:gap-4 md:px-8">
+          <Link to="/" className="shrink-0 font-display text-base font-extrabold tracking-tight md:text-lg">
+            Purple<span className={onDark ? 'text-saffron' : 'text-royal'}>Foods</span>
+          </Link>
           <button
             onClick={() => setSheet(true)}
-            className="flex items-center gap-1.5 rounded-full py-1.5 pr-2 text-sm font-semibold"
+            className="flex min-w-0 items-center gap-1.5 rounded-full py-1.5 pr-2 text-sm font-semibold"
             aria-label={`Delivery area: ${area?.name ?? 'not set'}. Tap to change`}
           >
-            <MapPin className={`h-4 w-4 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
-            {area?.name ?? 'Abuja'}
-            <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
+            <MapPin className={`h-4 w-4 shrink-0 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
+            <span className="truncate">{area?.name ?? 'Abuja'}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
           </button>
-          <div className="flex items-center gap-1">
-            <Link to="/" className="font-display text-base font-extrabold tracking-tight">
-              Purple<span className={onDark ? 'text-saffron' : 'text-royal'}>Foods</span>
-            </Link>
-          </div>
           <Link
-            to="/notifications"
-            aria-label={unread ? `${unread} unread notifications` : 'Notifications'}
-            className="relative rounded-full p-1.5"
+            to="/search"
+            className={`mx-auto hidden w-full max-w-sm items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors md:flex ${
+              onDark ? 'border-lilac/25 bg-lilac/10 text-lilac/70 hover:bg-lilac/20' : 'border-border bg-card text-muted-foreground hover:border-royal'
+            }`}
           >
-            <Bell className={`h-[18px] w-[18px] ${onDark ? 'text-lilac' : 'text-plum'}`} aria-hidden="true" />
-            {unread > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-saffron px-1 font-mono text-[9px] font-bold text-plum-deep">
-                {unread > 9 ? '9+' : unread}
-              </span>
-            )}
+            <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Search dishes, restaurants…
           </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
+            <Link to="/restaurants" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-royal lg:block">
+              Restaurants
+            </Link>
+            <Link to="/orders" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-royal lg:block">
+              Orders
+            </Link>
+            <Link
+              to="/notifications"
+              aria-label={unread ? `${unread} unread notifications` : 'Notifications'}
+              className="relative rounded-full p-1.5 md:p-2"
+            >
+              <Bell className={`h-[18px] w-[18px] ${onDark ? 'text-lilac' : 'text-plum'}`} aria-hidden="true" />
+              {unread > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-saffron px-1 font-mono text-[9px] font-bold text-plum-deep">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </Link>
+            <Link
+              to="/cart"
+              className={`hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:flex ${
+                onDark ? 'bg-saffron text-plum-deep' : 'bg-plum text-lilac'
+              }`}
+            >
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+              Cart
+              {count > 0 && (
+                <span key={count} className={`flex h-5 min-w-5 animate-bump items-center justify-center rounded-full px-1 font-mono text-[10px] font-bold ${onDark ? 'bg-plum-deep text-saffron' : 'bg-saffron text-plum-deep'}`}>
+                  {count}
+                </span>
+              )}
+            </Link>
+            {session ? (
+              <Link
+                to="/account"
+                aria-label="Your account"
+                className="hidden h-9 w-9 items-center justify-center rounded-full bg-plum font-display text-sm font-extrabold text-lilac transition-transform active:scale-95 md:flex"
+              >
+                {initial}
+              </Link>
+            ) : (
+              <Link
+                to="/auth"
+                className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
+                  onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
+                }`}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
       </header>
       <AreaSheet open={sheet} onClose={() => setSheet(false)} />
@@ -231,7 +279,7 @@ export function BottomNav() {
   const { count } = useStore()
   const loc = useLocation()
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur" aria-label="Main navigation">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Main navigation">
       <div className="grid grid-cols-5">
         {TABS.map((t) => {
           const active = t.to === '/' ? loc.pathname === '/' : loc.pathname.startsWith(t.to)
@@ -261,6 +309,55 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+  )
+}
+
+export function Footer() {
+  return (
+    <footer className="border-t border-border bg-card">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-24 pt-10 md:px-8 md:pb-10">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="col-span-2 md:col-span-1">
+            <p className="font-display text-lg font-extrabold tracking-tight text-plum">
+              Purple<span className="text-royal">Foods</span>
+            </p>
+            <p className="mt-2 max-w-[28ch] text-xs leading-relaxed text-muted-foreground">
+              Abuja’s restaurants, grills and bukas — tracked from flame to your doorstep.
+            </p>
+          </div>
+          <nav aria-label="Explore">
+            <Mono className="text-royal">[EXPLORE]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
+              <li><Link to="/restaurants" className="transition-colors hover:text-royal">Restaurants</Link></li>
+              <li><Link to="/search" className="transition-colors hover:text-royal">Search</Link></li>
+              <li><Link to="/promos" className="transition-colors hover:text-royal">Promos & referrals</Link></li>
+              <li><Link to="/help" className="transition-colors hover:text-royal">Help & support</Link></li>
+            </ul>
+          </nav>
+          <nav aria-label="Account">
+            <Mono className="text-royal">[ACCOUNT]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
+              <li><Link to="/orders" className="transition-colors hover:text-royal">Orders</Link></li>
+              <li><Link to="/favorites" className="transition-colors hover:text-royal">Favorites</Link></li>
+              <li><Link to="/account/addresses" className="transition-colors hover:text-royal">Saved addresses</Link></li>
+              <li><Link to="/notifications" className="transition-colors hover:text-royal">Notifications</Link></li>
+            </ul>
+          </nav>
+          <div>
+            <Mono className="text-royal">[CONTACT]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
+              <li><a href="mailto:support@purplefoods.ng" className="break-all transition-colors hover:text-royal">support@purplefoods.ng</a></li>
+              <li><a href="tel:+2348000000000" className="transition-colors hover:text-royal">0800 000 0000</a></li>
+              <li className="font-normal text-muted-foreground">Abuja, Nigeria</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-8 flex flex-col gap-1 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:flex-row md:justify-between">
+          <span>Purple Foods · © Smadsoft Technology Limited</span>
+          <span>Customer · Rider · Merchant · Admin</span>
+        </div>
+      </div>
+    </footer>
   )
 }
 

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
 import { StoreProvider, useStore } from './store'
-import { BottomNav, DishArt, Marquee, TopBar } from './ui'
+import { BottomNav, Footer, TopBar } from './ui'
 import {
   AccountPage,
   AddressesPage,
@@ -27,7 +27,7 @@ import {
   WelcomePage,
 } from './pages'
 
-/** Full-screen flow pages render without the top bar / bottom nav. */
+/** Full-screen flow pages render without the header / footer / bottom nav. */
 const CHROMELESS = ['/welcome', '/location', '/auth', '/auth/signup', '/order-success']
 
 /** First-run gate: onboarding (welcome → location → optional sign-in) comes
@@ -44,10 +44,10 @@ function Shell() {
   const loc = useLocation()
   const chromeless = CHROMELESS.some((p) => loc.pathname.startsWith(p))
   return (
-    <div className="relative min-h-dvh w-full max-w-[480px] bg-background shadow-2xl lg:my-6 lg:min-h-[calc(100dvh-3rem)] lg:rounded-[2rem] lg:overflow-hidden">
+    <div className="flex min-h-dvh flex-col bg-background">
       {!chromeless && <TopBar />}
       <OnboardingGate />
-      <main className={chromeless ? '' : 'pb-24'}>
+      <main className={chromeless ? 'flex-1' : 'flex-1 pb-24 md:pb-0'}>
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/location" element={<LocationPage />} />
@@ -74,6 +74,7 @@ function Shell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {!chromeless && <Footer />}
       {!chromeless && <BottomNav />}
     </div>
   )
@@ -82,28 +83,7 @@ function Shell() {
 export default function App() {
   return (
     <StoreProvider>
-      <div className="min-h-dvh bg-plum-deep lg:flex lg:items-center lg:justify-center lg:gap-10 lg:px-10">
-        <aside aria-hidden="true" className="hidden max-w-xs shrink-0 text-lilac lg:sticky lg:top-20 lg:block lg:self-start">
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.3em] text-saffron">Purple Foods</p>
-          <p className="mt-3 font-display text-5xl font-extrabold leading-[0.98] tracking-tight">
-            Abuja,
-            <br />
-            served
-            <br />
-            <span className="text-saffron">hot.</span>
-          </p>
-          <p className="mt-4 text-sm leading-relaxed text-lilac/70">
-            Restaurants, grills, groceries and pharmacy — one governed platform. Customer, rider, merchant, admin.
-          </p>
-        </aside>
-        <Shell />
-        <aside aria-hidden="true" className="hidden w-56 shrink-0 lg:sticky lg:top-20 lg:block lg:self-start">
-          <DishArt seed="desktop-garnish" className="w-full rounded-3xl" />
-          <div className="mt-4 overflow-hidden rounded-2xl">
-            <Marquee dark items={['Flame to doorstep', '12-min warmth SLA', 'Paystack · Flutterwave', 'Rider network live']} />
-          </div>
-        </aside>
-      </div>
+      <Shell />
       <Toaster position="top-center" richColors />
     </StoreProvider>
   )
