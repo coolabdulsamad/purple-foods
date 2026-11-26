@@ -116,7 +116,7 @@ export default function HomePage() {
                 >
                   Sign in
                 </Link>
-                <span className="text-xs text-lilac/60">or order as a guest — no account needed</span>
+                <span className="text-xs text-lilac/60">browse freely — sign in only at checkout</span>
               </div>
             )}
             <div className="mt-10 hidden gap-10 md:flex">
