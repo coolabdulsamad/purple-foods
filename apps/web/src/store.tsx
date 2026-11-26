@@ -1,8 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
-import type { CartLine, CartRestaurant, Profile, SelectedArea, Session } from './types'
+import type { CartLine, CartOptionSelection, CartRestaurant, Profile, SelectedArea, Session } from './types'
+import { cartLineUnitKobo } from './types'
 import type { MenuItemDto, RestaurantDto } from './types'
+
+/** Everything the item page collects beyond the item itself. */
+export interface LineConfig {
+  options: CartOptionSelection[]
+  cutlery: boolean
+  allergy: string
+  note: string
+}
 
 interface StoreShape {
   area: SelectedArea | null
@@ -15,7 +24,8 @@ interface StoreShape {
   deliveryFeeKobo: number
   totalKobo: number
   cartRestaurant: CartRestaurant | null
-  add: (item: MenuItemDto, r: RestaurantDto) => void
+  add: (item: MenuItemDto, r: RestaurantDto, config?: LineConfig, qty?: number) => void
+  updateLine: (key: string, config: LineConfig, qty: number) => void
   setQty: (key: string, qty: number) => void
   clear: () => void
   profile: Profile
@@ -39,10 +49,29 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
+/** Stable suffix so the same dish with different toppings is a separate
+ *  cart line; a plain quick-add keeps the legacy key and merges. */
+function configKey(restaurantId: string, itemId: string, config?: LineConfig): string {
+  const base = `${restaurantId}:${itemId}`
+  if (!config) return base
+  const sig = [
+    config.options.map((o) => o.optionId).sort().join(','),
+    config.cutlery ? '1' : '',
+    config.allergy.trim(),
+    config.note.trim(),
+  ].join('|')
+  return sig === '||' || sig === '' ? base : `${base}:${sig}`
+}
+
+/** Backfill fields added after a customer's cart was last saved. */
+function normalizeLine(l: CartLine): CartLine {
+  return { options: [], cutlery: false, allergy: '', note: '', ...l }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [area, setArea] = useState<SelectedArea | null>(() => read('pf2-area', null))
   const [onboarded, setOnboarded] = useState<boolean>(() => read('pf2-onboarded', false))
-  const [lines, setLines] = useState<CartLine[]>(() => read('pf2-cart', []))
+  const [lines, setLines] = useState<CartLine[]>(() => read<CartLine[]>('pf2-cart', []).map(normalizeLine))
   const [profile, setProfile] = useState<Profile>(() => read('pf2-profile', EMPTY_PROFILE))
   const [session, setSessionState] = useState<Session | null>(() => {
     const s = read<Session | null>('pf2-session', null)
@@ -61,7 +90,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreShape>(() => {
     const count = lines.reduce((n, l) => n + l.qty, 0)
-    const subtotalKobo = lines.reduce((n, l) => n + l.priceKobo * l.qty, 0)
+    const subtotalKobo = lines.reduce((n, l) => n + cartLineUnitKobo(l) * l.qty, 0)
     const cartRestaurant = lines.length ? lines[0].restaurant : null
     const deliveryFeeKobo = lines.length ? lines[0].restaurant.deliveryFeeKobo : 0
     return {
@@ -75,16 +104,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deliveryFeeKobo,
       totalKobo: subtotalKobo + deliveryFeeKobo,
       cartRestaurant,
-      add: (item, r) => {
+      add: (item, r, config, qty = 1) => {
         setLines((prev) => {
           const foreign = prev.find((l) => l.restaurant.id !== r.id)
           const base = foreign ? [] : prev
           if (foreign) toast.info(`Cart switched to ${r.name}`, { description: 'One restaurant per order — previous items cleared.' })
           const snapshot: CartRestaurant = { id: r.id, slug: r.slug, name: r.name, deliveryFeeKobo: r.deliveryFeeKobo }
-          const key = `${r.id}:${item.id}`
+          const key = configKey(r.id, item.id, config)
           const hit = base.find((l) => l.key === key)
-          if (hit) return base.map((l) => (l.key === key ? { ...l, qty: l.qty + 1 } : l))
-          return [...base, { key, restaurant: snapshot, itemId: item.id, name: item.name, priceKobo: item.priceKobo, qty: 1 }]
+          if (hit) return base.map((l) => (l.key === key ? { ...l, qty: Math.min(20, l.qty + qty) } : l))
+          return [
+            ...base,
+            {
+              key,
+              restaurant: snapshot,
+              itemId: item.id,
+              name: item.name,
+              priceKobo: item.priceKobo,
+              qty,
+              options: config?.options ?? [],
+              cutlery: config?.cutlery ?? false,
+              allergy: config?.allergy ?? '',
+              note: config?.note ?? '',
+            },
+          ]
+        })
+      },
+      // Item-page "edit this cart line": replace the line's configuration,
+      // merging into an existing identical line when the keys collide.
+      updateLine: (key, config, qty) => {
+        setLines((prev) => {
+          const old = prev.find((l) => l.key === key)
+          if (!old) return prev
+          const nextKey = configKey(old.restaurant.id, old.itemId, config)
+          const replacement: CartLine = {
+            ...old,
+            key: nextKey,
+            qty,
+            options: config.options,
+            cutlery: config.cutlery,
+            allergy: config.allergy,
+            note: config.note,
+          }
+          const rest = prev.filter((l) => l.key !== key)
+          const twin = rest.find((l) => l.key === nextKey)
+          if (twin) {
+            return rest.map((l) => (l.key === nextKey ? { ...l, qty: Math.min(20, l.qty + qty) } : l))
+          }
+          return [...rest, replacement]
         })
       },
       setQty: (key, qty) => {
