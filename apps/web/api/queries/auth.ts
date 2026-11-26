@@ -316,10 +316,20 @@ export async function registerWithEmail(
   }
   const email = normalizeEmail(input.email);
   const phone = normalizePhone(input.phone);
-  if (input.password.length < 8) {
+  // Same rules as the sign-up checklist (PasswordInput on the frontend):
+  // 8+ characters, lower + upper case, a number and a symbol.
+  const pw = input.password;
+  const pwOk =
+    pw.length >= 8 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /\d/.test(pw) &&
+    /[^A-Za-z0-9]/.test(pw);
+  if (!pwOk) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Password must be at least 8 characters.",
+      message:
+        "Password needs 8+ characters with upper and lower case letters, a number and a symbol.",
     });
   }
 
