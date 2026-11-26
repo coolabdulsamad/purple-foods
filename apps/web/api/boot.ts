@@ -2,11 +2,14 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { sql } from "drizzle-orm";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
 import { log } from "./lib/logger";
 import { handleClientLog } from "./lib/clientlog";
+import { ensureSchema } from "./lib/migrate";
+import { getDb } from "./queries/connection";
 import { REQUEST_ID_HEADER, runWithRequestId } from "./lib/requestcontext";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -74,6 +77,31 @@ app.post(
   bodyLimit({ maxSize: 64 * 1024, onError: (c) => c.body(null, 413) }),
   handleClientLog,
 );
+// Liveness + DB probe for the deployed preview: when the storefront spins on
+// "Loading…", /api/health answers "is the API up, and can it reach the
+// database?" without needing log access. Must be registered BEFORE the
+// /api/* 404 catch-all below.
+app.get("/api/health", async (c) => {
+  let db = "down";
+  let detail: string | undefined;
+  try {
+    await getDb().execute(sql`select 1`);
+    db = "up";
+  } catch (err) {
+    detail = err instanceof Error ? err.message : String(err);
+  }
+  log.info("health probe", { db, detail });
+  return c.json(
+    {
+      ok: db === "up",
+      db,
+      ...(db === "down" && detail ? { detail } : {}),
+      time: new Date().toISOString(),
+    },
+    db === "up" ? 200 : 503,
+  );
+});
+
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 // Unhandled request errors must reach /tmp/kimi-logs/app.log, not just stdout:
@@ -95,6 +123,12 @@ export default app;
 if (env.isProduction) {
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
+
+  // Self-heal the schema before the first request can hit a missing table:
+  // applies db/migrations/*.sql on a fresh database, baselines a pre-existing
+  // one. Never throws — a failure is logged and reported by /api/health.
+  await ensureSchema();
+
   serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
