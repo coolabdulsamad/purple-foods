@@ -4,6 +4,7 @@ import type {
   CreateOrderResult,
   OrderDto,
   OrderItemDto,
+  OrderItemOptionDto,
   PaymentMethod,
   SessionUserDto,
 } from "@contracts/types";
@@ -11,6 +12,8 @@ import {
   areas,
   ledgerEntries,
   merchants,
+  menuItemOptionGroups,
+  menuItemOptions,
   menuItems,
   orderEvents,
   orderItems,
@@ -45,6 +48,15 @@ function newHumanRef(): string {
   return `PF-${1000 + Math.floor(Math.random() * 9000)}`;
 }
 
+export interface CreateOrderItemInput {
+  menuItemId: string;
+  quantity: number;
+  optionIds: string[];
+  note: string;
+  allergy: string;
+  cutlery: boolean;
+}
+
 export interface CreateOrderInput {
   customerName: string;
   customerPhone: string;
@@ -53,7 +65,7 @@ export interface CreateOrderInput {
   areaId: string;
   merchantSlug: string;
   paymentMethod: PaymentMethod;
-  items: { menuItemId: string; quantity: number }[];
+  items: CreateOrderItemInput[];
 }
 
 export async function createOrder(
@@ -123,12 +135,47 @@ export async function createOrder(
     .where(inArray(menuItems.id, ids));
   const byId = new Map(menuRows.map((m) => [m.id, m]));
 
+  // Load every option group for these items (min/max rules) and every
+  // selected option (for validation + pricing).
+  const groupRows = await db
+    .select()
+    .from(menuItemOptionGroups)
+    .where(inArray(menuItemOptionGroups.menuItemId, ids));
+  const groupsByItem = new Map<string, typeof groupRows>();
+  for (const g of groupRows) {
+    const list = groupsByItem.get(g.menuItemId) ?? [];
+    list.push(g);
+    groupsByItem.set(g.menuItemId, list);
+  }
+
+  const wantedOptionIds = [
+    ...new Set(input.items.flatMap((i) => i.optionIds ?? [])),
+  ];
+  const optionRows = wantedOptionIds.length
+    ? await db
+        .select({
+          option: menuItemOptions,
+          group: menuItemOptionGroups,
+        })
+        .from(menuItemOptions)
+        .innerJoin(
+          menuItemOptionGroups,
+          eq(menuItemOptions.groupId, menuItemOptionGroups.id),
+        )
+        .where(inArray(menuItemOptions.id, wantedOptionIds))
+    : [];
+  const optionsById = new Map(optionRows.map((r) => [r.option.id, r]));
+
   type Line = {
     menuItemId: string;
     name: string;
     unitPriceKobo: bigint;
     quantity: number;
     lineTotalKobo: bigint;
+    optionsSnapshot: OrderItemOptionDto[];
+    note: string;
+    allergy: string;
+    cutlery: boolean;
   };
   const lines: Line[] = [];
   for (const item of input.items) {
@@ -146,12 +193,56 @@ export async function createOrder(
         message: "Item quantity must be between 1 and 20.",
       });
     }
+
+    // Validate selected options against the item's groups.
+    const selected: { option: typeof menuItemOptions.$inferSelect; group: typeof menuItemOptionGroups.$inferSelect }[] = [];
+    const perGroup = new Map<string, number>();
+    for (const optionId of item.optionIds ?? []) {
+      const hit = optionsById.get(optionId);
+      if (!hit || !hit.option.isAvailable || hit.group.menuItemId !== m.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `One of the add-ons for ${m.name} is no longer available — please review your cart.`,
+        });
+      }
+      selected.push(hit);
+      perGroup.set(hit.group.id, (perGroup.get(hit.group.id) ?? 0) + 1);
+    }
+    for (const g of groupsByItem.get(m.id) ?? []) {
+      const n = perGroup.get(g.id) ?? 0;
+      if (n < g.minSelect) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${m.name}: pick at least ${g.minSelect} in "${g.name}".`,
+        });
+      }
+      if (n > g.maxSelect) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${m.name}: "${g.name}" allows at most ${g.maxSelect} add-on${g.maxSelect > 1 ? "s" : ""}.`,
+        });
+      }
+    }
+
+    const optionsSum = selected.reduce(
+      (sum, s) => sum + s.option.priceKobo,
+      BigInt(0),
+    );
+    const unitPrice = m.priceKobo + optionsSum;
     lines.push({
       menuItemId: m.id,
       name: m.name,
-      unitPriceKobo: m.priceKobo,
+      unitPriceKobo: unitPrice,
       quantity: qty,
-      lineTotalKobo: m.priceKobo * BigInt(qty),
+      lineTotalKobo: unitPrice * BigInt(qty),
+      optionsSnapshot: selected.map((s) => ({
+        group: s.group.name,
+        name: s.option.name,
+        priceKobo: Number(s.option.priceKobo),
+      })),
+      note: (item.note ?? "").trim().slice(0, 300),
+      allergy: (item.allergy ?? "").trim().slice(0, 200),
+      cutlery: !!item.cutlery,
     });
   }
   if (lines.length === 0) {
@@ -246,6 +337,10 @@ export async function createOrder(
             unitPriceKobo: l.unitPriceKobo,
             quantity: l.quantity,
             lineTotalKobo: l.lineTotalKobo,
+            optionsSnapshot: l.optionsSnapshot,
+            note: l.note,
+            allergy: l.allergy,
+            cutlery: l.cutlery,
           })),
         );
 
@@ -334,6 +429,12 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
       quantity: i.quantity,
       unitPriceKobo: Number(i.unitPriceKobo),
       lineTotalKobo: Number(i.lineTotalKobo),
+      options: Array.isArray(i.optionsSnapshot)
+        ? (i.optionsSnapshot as OrderItemOptionDto[])
+        : [],
+      note: i.note,
+      allergy: i.allergy,
+      cutlery: i.cutlery,
     });
     itemsByOrder.set(i.orderId, list);
   }
