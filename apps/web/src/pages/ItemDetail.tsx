@@ -6,7 +6,7 @@ import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
 import type { LineConfig } from '../store'
 import type { CartOptionSelection, MenuOptionDto, MenuOptionGroupDto } from '../types'
-import { DishArt, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
+import { DishArt, DishImage, ErrorBlock, LoadingBlock, Mono, Rating, fmt } from '../ui'
 
 export default function ItemDetailPage() {
   const { id } = useParams()
@@ -123,7 +123,7 @@ export default function ItemDetailPage() {
     <div className="pb-8">
       <div className="mx-auto w-full max-w-5xl md:grid md:grid-cols-2 md:items-start md:gap-10 md:px-8 md:pt-24">
         <div className="relative">
-          <DishArt seed={item.id} className="h-64 w-full md:sticky md:top-24 md:h-[420px] md:rounded-3xl" />
+          <DishImage src={item.photoUrl} seed={item.id} className="h-64 w-full md:sticky md:top-24 md:h-[420px] md:rounded-3xl" />
           <button
             onClick={() => navigate(-1)}
             aria-label="Go back"
