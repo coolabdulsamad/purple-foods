@@ -29,12 +29,12 @@ const t = initTRPC.context<TrpcContext>().create({
 export const createRouter = t.router;
 export const publicQuery = t.procedure;
 
-/** Requires a valid bearer session (phone OTP sign-in). */
+/** Requires a valid bearer session (OTP, email, or Google sign-in). */
 export const protectedQuery = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
-      message: "Sign in with your phone number to continue.",
+      message: "Sign in to continue.",
     });
   }
   return next({ ctx: { ...ctx, user: ctx.user } });

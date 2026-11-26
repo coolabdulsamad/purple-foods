@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import type {
   AreaDto,
   MenuItemDto,
+  MenuItemSearchDto,
   RestaurantDetailDto,
   RestaurantDto,
 } from "@contracts/types";
@@ -90,4 +91,30 @@ export async function getRestaurantBySlug(
     }));
 
   return { ...toRestaurantDto(row), menu };
+}
+
+/** Every available menu item across listed merchants, flattened with its
+ *  restaurant — powers the Search page and item detail lookups. */
+export async function listAllMenuItems(): Promise<MenuItemSearchDto[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ item: menuItems, merchant: merchants })
+    .from(menuItems)
+    .innerJoin(merchants, eq(menuItems.merchantId, merchants.id))
+    .where(eq(merchants.isListed, true))
+    .orderBy(asc(merchants.name), asc(menuItems.category), asc(menuItems.name));
+  return rows
+    .filter(({ item: i }) => i.isAvailable)
+    .map(({ item: i, merchant: m }) => ({
+      id: i.id,
+      name: i.name,
+      description: i.description,
+      priceKobo: Number(i.priceKobo),
+      category: i.category,
+      isSpicy: i.isSpicy,
+      isPopular: i.isPopular,
+      merchantId: m.id,
+      merchantSlug: m.slug,
+      merchantName: m.name,
+    }));
 }

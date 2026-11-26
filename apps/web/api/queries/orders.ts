@@ -61,9 +61,12 @@ export async function createOrder(
   sessionUser?: SessionUserDto | null,
 ): Promise<CreateOrderResult> {
   const db = getDb();
-  // A signed-in customer orders as their session identity; the phone they
-  // typed at checkout never overrides it. Guest checkout stays supported.
-  const phone = sessionUser?.phone ?? normalizePhone(input.customerPhone);
+  // A signed-in customer orders as their session identity. Delivery phone:
+  // the session phone when they have one, otherwise the phone typed at
+  // checkout (and we backfill it onto their account so future orders and
+  // OTP sign-in follow the same number).
+  const typedPhone = sessionUser?.phone ? null : normalizePhone(input.customerPhone);
+  const phone = sessionUser?.phone ?? typedPhone!;
   const name = input.customerName.trim();
   const street = input.street.trim();
   if (!name) {
@@ -172,10 +175,25 @@ export async function createOrder(
         let customerId: string;
         if (sessionUser) {
           customerId = sessionUser.id;
-          await tx
-            .update(users)
-            .set({ name, lastSeenAt: new Date(), updatedAt: new Date() })
-            .where(eq(users.id, customerId));
+          const patch: Partial<typeof users.$inferInsert> = {
+            name,
+            lastSeenAt: new Date(),
+            updatedAt: new Date(),
+          };
+          // Backfill phone for email/Google accounts on first order.
+          if (!sessionUser.phone && typedPhone) patch.phone = typedPhone;
+          try {
+            await tx.update(users).set(patch).where(eq(users.id, customerId));
+          } catch (err) {
+            // Phone belongs to another account — keep the order, skip the
+            // backfill (delivery phone is already stored on the order).
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!msg.includes("users_phone_unique")) throw err;
+            await tx
+              .update(users)
+              .set({ name, lastSeenAt: new Date(), updatedAt: new Date() })
+              .where(eq(users.id, customerId));
+          }
         } else {
           const existing = await tx
             .select()

@@ -17,4 +17,7 @@ export const env = {
   // the code inline as devCode so sign-in stays testable.
   termiiApiKey: process.env.TERMII_API_KEY ?? "",
   termiiSenderId: process.env.TERMII_SENDER_ID ?? "PurpleFds",
+  // Google Identity Services client id. When absent, auth.google answers
+  // PRECONDITION_FAILED and the client keeps email/phone sign-in in front.
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
 };
