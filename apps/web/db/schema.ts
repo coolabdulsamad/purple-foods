@@ -257,7 +257,7 @@ export const orders = pgTable(
       .notNull()
       .default("received"),
     paymentMethod: text("payment_method", {
-      enum: ["paystack", "flutterwave", "cod"],
+      enum: ["paystack", "flutterwave", "cod", "bank_transfer"],
     }).notNull(),
     paymentStatus: text("payment_status", {
       enum: ["pending", "paid", "failed", "refunded"],
@@ -278,6 +278,13 @@ export const orders = pgTable(
     deliveryPhone: text("delivery_phone").notNull(),
     deliveryStreet: text("delivery_street").notNull(),
     deliveryNotes: text("delivery_notes").notNull().default(""),
+    // 0011: send-to-someone receiver (null → the customer receives),
+    // scheduled delivery window, and the exact drop-off pin.
+    receiverName: text("receiver_name"),
+    receiverPhone: text("receiver_phone"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    deliveryLat: numeric("delivery_lat", { precision: 9, scale: 6 }),
+    deliveryLng: numeric("delivery_lng", { precision: 9, scale: 6 }),
     placedAt: timestamp("placed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -531,6 +538,41 @@ export const transactions = pgTable(
     index("idx_transactions_user").on(t.userId, t.createdAt),
     index("idx_transactions_order").on(t.orderId),
   ],
+);
+
+// ── Bank transfer instructions (0011) ──────────────────────────────
+// One row per bank-transfer order: the account the customer pays into
+// (gateway-generated when Paystack is live, company account from env
+// otherwise) plus the unique reference they quote.
+
+export const bankTransfers = pgTable(
+  "bank_transfers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reference: text("reference").notNull().unique(),
+    amountKobo: bigint("amount_kobo", { mode: "bigint" }).notNull(),
+    bankName: text("bank_name").notNull().default(""),
+    accountNumber: text("account_number").notNull().default(""),
+    accountName: text("account_name").notNull().default(""),
+    provider: text("provider").notNull().default("manual"),
+    status: text("status", {
+      enum: ["pending", "sent", "paid", "expired"],
+    })
+      .notNull()
+      .default("pending"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("idx_bank_transfers_user").on(t.userId, t.createdAt)],
 );
 
 export const reviews = pgTable(
