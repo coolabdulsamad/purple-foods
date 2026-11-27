@@ -18,6 +18,8 @@ function toAddressDto(row: {
     areaName: row.area.name,
     notes: row.address.notes,
     isDefault: row.address.isDefault,
+    lat: row.address.lat == null ? null : Number(row.address.lat),
+    lng: row.address.lng == null ? null : Number(row.address.lng),
   };
 }
 
@@ -38,6 +40,8 @@ export interface CreateAddressInput {
   areaId: string;
   notes: string;
   isDefault: boolean;
+  lat: number | null;
+  lng: number | null;
 }
 
 export async function createAddress(
@@ -86,6 +90,8 @@ export async function createAddress(
         areaId: input.areaId,
         notes: input.notes.trim(),
         isDefault: makeDefault,
+        lat: input.lat == null ? null : String(input.lat),
+        lng: input.lng == null ? null : String(input.lng),
       })
       .returning();
     return toAddressDto({ address: created[0]!, area });
