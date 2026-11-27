@@ -3,8 +3,16 @@ import type { MenuItemDto, RestaurantDto, SessionUserDto } from '@contracts/type
 export type {
   AddressDto,
   AreaDto,
+  AssistantActionDto,
+  AssistantDishDto,
+  AssistantMessageDto,
+  AssistantReplyDto,
+  AssistantRestaurantDto,
   AuthResult,
+  BankTransferDto,
   CityDto,
+  CreateOrderResult,
+  GeoResultDto,
   MenuItemDto,
   MenuItemSearchDto,
   MenuOptionDto,
@@ -13,9 +21,14 @@ export type {
   NotificationDto,
   OrderDto,
   OrderStatus,
+  PaymentCardDto,
+  PaymentMethod,
+  PromoCheckDto,
+  PromoCodeDto,
   RestaurantDetailDto,
   RestaurantDto,
   SessionUserDto,
+  TransactionDto,
 } from '@contracts/types'
 
 /** An active sign-in (phone OTP, email, or Google), persisted on-device. */

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
 import { StoreProvider } from './store'
+import { Assistant } from './components/Assistant'
 import { BottomNav, Footer, TopBar } from './ui'
 import {
   AccountPage,
@@ -43,7 +44,15 @@ function Shell() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       {!chromeless && <TopBar />}
-      <main className={chromeless ? 'flex-1' : 'flex-1 pb-24 md:pb-0'}>
+      {/* min-h keeps the footer below the fold on short pages — it only
+          appears after scrolling, never floating mid-screen. */}
+      <main
+        className={
+          chromeless
+            ? 'flex-1'
+            : 'min-h-[calc(100dvh-3.5rem)] flex-1 pb-24 md:min-h-[calc(100dvh-4rem)] md:pb-0'
+        }
+      >
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/location" element={<LocationPage />} />
@@ -74,6 +83,7 @@ function Shell() {
       </main>
       {!chromeless && <Footer />}
       {!chromeless && <BottomNav />}
+      {!chromeless && <Assistant />}
     </div>
   )
 }
