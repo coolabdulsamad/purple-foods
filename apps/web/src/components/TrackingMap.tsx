@@ -32,10 +32,14 @@ export function TrackingMap({ order }: { order: OrderDto }) {
 
   const from: L.LatLngExpression | null =
     order.merchantLat != null && order.merchantLng != null ? [order.merchantLat, order.merchantLng] : null
+  // Prefer the exact pin the customer dropped at checkout; fall back to
+  // the delivery-zone center for orders placed before pins existed.
   const to: L.LatLngExpression | null =
-    order.deliveryAreaLat != null && order.deliveryAreaLng != null
-      ? [order.deliveryAreaLat, order.deliveryAreaLng]
-      : null
+    order.deliveryLat != null && order.deliveryLng != null
+      ? [order.deliveryLat, order.deliveryLng]
+      : order.deliveryAreaLat != null && order.deliveryAreaLng != null
+        ? [order.deliveryAreaLat, order.deliveryAreaLng]
+        : null
 
   useEffect(() => {
     if (!hostRef.current || !from || !to || mapRef.current) return
@@ -51,7 +55,9 @@ export function TrackingMap({ order }: { order: OrderDto }) {
       lineCap: 'round',
     }).addTo(map)
     L.marker(from, { icon: kitchenIcon() }).addTo(map).bindTooltip(order.merchantName, { direction: 'top' })
-    L.marker(to, { icon: customerIcon() }).addTo(map).bindTooltip('Your delivery zone', { direction: 'top' })
+    L.marker(to, { icon: customerIcon() })
+      .addTo(map)
+      .bindTooltip(order.deliveryLat != null ? 'Your drop-off pin' : 'Your delivery zone', { direction: 'top' })
 
     const start = L.latLng(from as [number, number])
     riderRef.current = L.marker(start, { icon: riderIcon(), zIndexOffset: 500 }).addTo(map)
