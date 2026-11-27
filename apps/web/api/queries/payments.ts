@@ -2,12 +2,14 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import type {
+  BankTransferDto,
   InitializePaymentResult,
   PaymentCardDto,
   TransactionDto,
   VerifyPaymentResult,
 } from "@contracts/types";
 import {
+  bankTransfers,
   merchants,
   notifications,
   orderEvents,
@@ -46,13 +48,20 @@ function newReference(prefix: string): string {
 export async function recordOrderTransaction(args: {
   userId: string;
   orderId: string;
-  provider: "cod" | "paystack" | "flutterwave";
+  provider: "cod" | "paystack" | "flutterwave" | "bank_transfer";
   amountKobo: bigint;
   reference?: string;
 }): Promise<string> {
   const db = getDb();
   const reference =
-    args.reference ?? newReference(args.provider === "cod" ? "COD" : "PAY");
+    args.reference ??
+    newReference(
+      args.provider === "cod"
+        ? "COD"
+        : args.provider === "bank_transfer"
+          ? "TRF"
+          : "PAY",
+    );
   await db.insert(transactions).values({
     userId: args.userId,
     orderId: args.orderId,
@@ -357,7 +366,6 @@ export async function initializePaystack(args: {
   callbackBase: string;
 }): Promise<InitializePaymentResult> {
   if (!env.paystackSecretKey) throw noGateway();
-  const db = getDb();
   const { order, user } = await loadOwnedOrder(args.userId, args.orderId);
   if (order.paymentStatus === "paid") {
     throw new TRPCError({ code: "BAD_REQUEST", message: "This order is already paid." });
@@ -481,4 +489,174 @@ export async function chargeSavedCard(args: {
     status: data.status === "success" ? "success" : data.status === "failed" ? "failed" : "pending",
     orderRef: result.orderRef,
   };
+}
+
+// ── Bank transfer ────────────────────────────────────────────────
+// Dual mode:
+//  • Paystack mode — when PAYSTACK_SECRET_KEY is set we ask Paystack
+//    for a dedicated per-order bank account via /charge
+//    (type: bank_transfer). Defensive: any failure falls back to
+//    manual mode so checkout never breaks.
+//  • Manual mode (default) — the company account from BANK_* env vars
+//    plus a unique PF-TRF reference the customer uses as narration.
+// The customer taps "I've sent it" → status 'sent'; staff confirms on
+// the admin side (later phase) → 'paid'.
+
+const BANK_TRANSFER_TTL_MINUTES = 24 * 60; // 24 hours to complete a transfer
+
+function toBankTransferDto(row: typeof bankTransfers.$inferSelect): BankTransferDto {
+  return {
+    reference: row.reference,
+    amountKobo: Number(row.amountKobo),
+    bankName: row.bankName,
+    accountNumber: row.accountNumber,
+    accountName: row.accountName,
+    provider: row.provider,
+    status: row.status,
+    expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+  };
+}
+
+/**
+ * Create the bank-transfer instruction for a freshly placed order.
+ * Called post-commit from createOrder (like recordOrderTransaction for
+ * COD). Always succeeds — on any Paystack problem it degrades to the
+ * manual account so the customer always gets account details.
+ */
+export async function createBankTransferForOrder(args: {
+  userId: string;
+  orderId: string;
+  amountKobo: bigint;
+}): Promise<BankTransferDto> {
+  const db = getDb();
+  const reference = newReference("PF-TRF");
+  const expiresAt = new Date(Date.now() + BANK_TRANSFER_TTL_MINUTES * 60_000);
+
+  let bankName = env.bankName;
+  let accountNumber = env.bankAccountNumber;
+  let accountName = env.bankAccountName;
+  let provider = "manual";
+
+  if (env.paystackSecretKey) {
+    try {
+      const [user] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(eq(users.id, args.userId))
+        .limit(1);
+      const email =
+        user?.email ??
+        `${(user?.phone ?? "customer").replace(/[^\d]/g, "")}@guest.purplefoods.ng`;
+      const data = await paystackFetch<{
+        status: string;
+        display_text?: string;
+        account_number?: string;
+        account_name?: string;
+        bank?: { name?: string };
+        account_expires_at?: string;
+      }>("/charge", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          amount: Number(args.amountKobo),
+          bank_transfer: {
+            account_expires_at: expiresAt.toISOString(),
+          },
+          metadata: { orderId: args.orderId, userId: args.userId },
+          reference,
+        }),
+      });
+      if (data.account_number) {
+        accountNumber = data.account_number;
+        accountName = data.account_name ?? accountName;
+        bankName = data.bank?.name ?? bankName;
+        provider = "paystack";
+      }
+    } catch (err) {
+      log.warn("paystack bank_transfer charge failed; using manual account", {
+        err: String(err),
+      });
+    }
+  }
+
+  const [row] = await db
+    .insert(bankTransfers)
+    .values({
+      orderId: args.orderId,
+      userId: args.userId,
+      reference,
+      amountKobo: args.amountKobo,
+      bankName,
+      accountNumber,
+      accountName,
+      provider,
+      status: "pending",
+      expiresAt,
+    })
+    .returning();
+  await recordOrderTransaction({
+    userId: args.userId,
+    orderId: args.orderId,
+    provider: "bank_transfer",
+    amountKobo: args.amountKobo,
+    reference,
+  });
+  return toBankTransferDto(row);
+}
+
+/** Fetch the transfer instruction for an order the user owns. */
+export async function getBankTransferForOrder(
+  userId: string,
+  orderId: string,
+): Promise<BankTransferDto | null> {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(bankTransfers)
+    .where(
+      and(
+        eq(bankTransfers.orderId, orderId),
+        eq(bankTransfers.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row ? toBankTransferDto(row) : null;
+}
+
+/** Customer tapped "I've sent it" → mark 'sent' and log the event. */
+export async function markBankTransferSent(
+  userId: string,
+  orderId: string,
+): Promise<BankTransferDto> {
+  const db = getDb();
+  const [row] = await db
+    .update(bankTransfers)
+    .set({ status: "sent" })
+    .where(
+      and(
+        eq(bankTransfers.orderId, orderId),
+        eq(bankTransfers.userId, userId),
+        eq(bankTransfers.status, "pending"),
+      ),
+    )
+    .returning();
+  if (!row) {
+    // Already marked or missing — return current state if it exists.
+    const existing = await getBankTransferForOrder(userId, orderId);
+    if (!existing) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No bank transfer found for this order.",
+      });
+    }
+    return existing;
+  }
+  await db.insert(orderEvents).values({
+    orderId,
+    status: "payment_sent",
+    actorType: "customer",
+    actorId: userId,
+    note: `Customer marked bank transfer ${row.reference} as sent.`,
+  });
+  return toBankTransferDto(row);
 }
