@@ -53,29 +53,41 @@ export default function AccountPage() {
     <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
       <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Account</h1>
 
-      <div className="mt-4 flex items-center gap-3 rounded-3xl border border-mint bg-mint-soft p-4">
-        {session.user.avatarUrl ? (
-          <img src={session.user.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-plum font-display text-lg font-extrabold text-lilac">
-            {initial}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-sm font-extrabold text-plum">
-            {session.user.name ?? 'Purple Foods customer'}
-            <ShieldCheck className="h-3.5 w-3.5 text-mint" aria-hidden="true" />
-          </p>
-          <p className="truncate font-mono text-xs text-muted-foreground">
-            {session.user.phone ?? session.user.email ?? ''}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Signed in until {new Date(session.expiresAt).toLocaleDateString()}
-          </p>
+      <div className="relative mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-plum-deep via-plum to-royal p-5 text-lilac shadow-lg">
+        <Grain />
+        <div className="relative flex items-center gap-4">
+          {session.user.avatarUrl ? (
+            <img
+              src={session.user.avatarUrl}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-saffron/60"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-saffron font-display text-2xl font-extrabold text-plum-deep ring-2 ring-lilac/30">
+              {initial}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 font-display text-lg font-extrabold tracking-tight">
+              {session.user.name ?? 'Purple Foods customer'}
+              <ShieldCheck className="h-4 w-4 text-mint" aria-hidden="true" />
+            </p>
+            <p className="truncate font-mono text-xs text-lilac/70">
+              {session.user.phone ?? session.user.email ?? ''}
+            </p>
+            <p className="mt-0.5 text-[11px] text-lilac/60">
+              Signed in until {new Date(session.expiresAt).toLocaleDateString()}
+            </p>
+          </div>
+          <Link
+            to="/account/edit"
+            aria-label="Edit profile"
+            className="rounded-full bg-saffron p-3 text-plum-deep shadow-lg transition-transform active:scale-95"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
-        <Link to="/account/edit" aria-label="Edit profile" className="rounded-full bg-card p-2.5 text-plum shadow-sm transition-transform active:scale-95">
-          <Pencil className="h-4 w-4" aria-hidden="true" />
-        </Link>
       </div>
 
       <section className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

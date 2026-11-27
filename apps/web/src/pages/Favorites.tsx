@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowDownWideNarrow, ArrowLeft, Heart, Search, X } from 'lucide-react'
+import { ArrowDownWideNarrow, Heart, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, PageHero } from '../ui'
 
 type SortKey = 'recent' | 'rating' | 'eta' | 'fee'
 
@@ -71,21 +71,9 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="rounded-full border border-border bg-card p-2.5 text-plum transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Favorites</h1>
-          <Mono className="text-muted-foreground">[{all.length} SAVED]</Mono>
-        </div>
-      </div>
-
+    <div className="pb-8">
+      <PageHero icon={Heart} title="Favorites" sub={`${all.length} saved`} />
+      <div className="mx-auto w-full max-w-7xl px-4 md:px-8">
       {favoritesQuery.isLoading ? (
         <LoadingBlock label="Loading your favorites…" />
       ) : favoritesQuery.isError ? (
@@ -195,6 +183,7 @@ export default function FavoritesPage() {
           )}
         </>
       )}
+      </div>
     </div>
   )
 }
