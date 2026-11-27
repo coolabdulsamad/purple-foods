@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { Bell, ChevronDown, Home, Loader2, MapPin, Minus, Plus, ReceiptText, Search, ShoppingBag, Star, User, WifiOff } from 'lucide-react'
+import { Bell, ChevronDown, Loader2, MapPin, Minus, Plus, ReceiptText, Search, ShoppingBag, Star, Store, User, WifiOff } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from './store'
 import { LocationDialog } from './components/LocationDialog'
@@ -152,6 +152,36 @@ export function Mono({ children, className = '' }: { children: ReactNode; classN
   return <span className={`font-mono text-[11px] font-medium uppercase tracking-[0.14em] ${className}`}>{children}</span>
 }
 
+/** Rich gradient page header — replaces bare white page tops with the
+ *  brand band. Renders below the fixed TopBar (pt-20/24 handled inside). */
+export function PageHero({
+  icon: Icon,
+  title,
+  sub,
+  children,
+}: {
+  icon: typeof Bell
+  title: string
+  sub: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-br from-plum-deep via-plum to-royal px-4 pb-7 pt-24 text-lilac md:px-8 md:pt-28">
+      <Grain />
+      <div className="relative mx-auto flex w-full max-w-5xl items-center gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-saffron/20 ring-1 ring-saffron/40">
+          <Icon className="h-6 w-6 text-saffron" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-2xl font-extrabold tracking-tight md:text-3xl">{title}</h1>
+          <Mono className="text-lilac/70">{sub}</Mono>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function Rating({ value }: { value: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -211,40 +241,42 @@ export function TopBar() {
     return () => window.removeEventListener('scroll', f)
   }, [])
   const initial = (session?.user.name ?? session?.user.email ?? 'P').charAt(0).toUpperCase()
+  const avatarUrl = session?.user.avatarUrl ?? null
   return (
     <>
+      {/* Deep-plum header everywhere; transparent only over the Home hero. */}
       <header
-        className={`fixed inset-x-0 top-0 z-40 transition-colors duration-300 ${
-          onDark ? 'bg-transparent text-lilac' : 'bg-lilac/95 text-plum shadow-sm backdrop-blur'
+        className={`fixed inset-x-0 top-0 z-40 text-lilac transition-colors duration-300 ${
+          onDark
+            ? 'bg-transparent'
+            : 'bg-gradient-to-r from-plum-deep via-plum to-royal shadow-lg shadow-plum-deep/25'
         }`}
       >
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-2 px-4 md:h-16 md:gap-4 md:px-8">
           <Link to="/" className="shrink-0 font-display text-base font-extrabold tracking-tight md:text-lg">
-            Purple<span className={onDark ? 'text-saffron' : 'text-royal'}>Foods</span>
+            Purple<span className="text-saffron">Foods</span>
           </Link>
           <button
             onClick={() => setSheet(true)}
             className="flex min-w-0 items-center gap-1.5 rounded-full py-1.5 pr-2 text-sm font-semibold"
             aria-label={`Delivery area: ${area?.name ?? 'not set'}. Tap to change`}
           >
-            <MapPin className={`h-4 w-4 shrink-0 ${onDark ? 'text-saffron' : 'text-royal'}`} aria-hidden="true" />
+            <MapPin className="h-4 w-4 shrink-0 text-saffron" aria-hidden="true" />
             <span className="truncate">{area ? `${area.name}${area.cityName ? `, ${area.cityName}` : ''}` : 'Choose location'}</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
           </button>
           <Link
             to="/search"
-            className={`mx-auto hidden w-full max-w-sm items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors md:flex ${
-              onDark ? 'border-lilac/25 bg-lilac/10 text-lilac/70 hover:bg-lilac/20' : 'border-border bg-card text-muted-foreground hover:border-royal'
-            }`}
+            className="mx-auto hidden w-full max-w-sm items-center gap-2 rounded-full border border-lilac/25 bg-lilac/10 px-4 py-2 text-sm font-medium text-lilac/70 transition-colors hover:bg-lilac/20 md:flex"
           >
             <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
             Search dishes, restaurants…
           </Link>
           <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
-            <Link to="/restaurants" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-royal lg:block">
+            <Link to="/restaurants" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-saffron lg:block">
               Restaurants
             </Link>
-            <Link to="/orders" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-royal lg:block">
+            <Link to="/orders" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-saffron lg:block">
               Orders
             </Link>
             <Link
@@ -252,7 +284,7 @@ export function TopBar() {
               aria-label={unread ? `${unread} unread notifications` : 'Notifications'}
               className="relative rounded-full p-1.5 md:p-2"
             >
-              <Bell className={`h-[18px] w-[18px] ${onDark ? 'text-lilac' : 'text-plum'}`} aria-hidden="true" />
+              <Bell className="h-[18px] w-[18px] text-lilac" aria-hidden="true" />
               {unread > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-saffron px-1 font-mono text-[9px] font-bold text-plum-deep">
                   {unread > 9 ? '9+' : unread}
@@ -261,14 +293,12 @@ export function TopBar() {
             </Link>
             <Link
               to="/cart"
-              className={`hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:flex ${
-                onDark ? 'bg-saffron text-plum-deep' : 'bg-plum text-lilac'
-              }`}
+              className="hidden items-center gap-2 rounded-full bg-saffron px-4 py-2 text-sm font-bold text-plum-deep transition-transform active:scale-95 md:flex"
             >
               <ShoppingBag className="h-4 w-4" aria-hidden="true" />
               Cart
               {count > 0 && (
-                <span key={count} className={`flex h-5 min-w-5 animate-bump items-center justify-center rounded-full px-1 font-mono text-[10px] font-bold ${onDark ? 'bg-plum-deep text-saffron' : 'bg-saffron text-plum-deep'}`}>
+                <span key={count} className="flex h-5 min-w-5 animate-bump items-center justify-center rounded-full bg-plum-deep px-1 font-mono text-[10px] font-bold text-saffron">
                   {count}
                 </span>
               )}
@@ -277,25 +307,25 @@ export function TopBar() {
               <Link
                 to="/account"
                 aria-label="Your account"
-                className="hidden h-9 w-9 items-center justify-center rounded-full bg-plum font-display text-sm font-extrabold text-lilac transition-transform active:scale-95 md:flex"
+                className="hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-saffron font-display text-sm font-extrabold text-plum-deep ring-2 ring-lilac/30 transition-transform active:scale-95 md:flex"
               >
-                {initial}
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initial
+                )}
               </Link>
             ) : (
               <>
                 <Link
                   to="/auth"
-                  className={`hidden rounded-full border px-4 py-2 text-sm font-bold transition-colors md:block ${
-                    onDark ? 'border-lilac/30 text-lilac hover:bg-lilac/10' : 'border-plum/20 text-plum hover:bg-lilac'
-                  }`}
+                  className="hidden rounded-full border border-lilac/30 px-4 py-2 text-sm font-bold text-lilac transition-colors hover:bg-lilac/10 md:block"
                 >
                   Sign in
                 </Link>
                 <Link
                   to="/auth/signup"
-                  className={`hidden rounded-full px-4 py-2 text-sm font-bold transition-transform active:scale-95 md:block ${
-                    onDark ? 'bg-saffron text-plum-deep' : 'bg-royal text-lilac hover:bg-plum'
-                  }`}
+                  className="hidden rounded-full bg-saffron px-4 py-2 text-sm font-bold text-plum-deep transition-transform active:scale-95 md:block"
                 >
                   Sign up
                 </Link>
@@ -310,7 +340,7 @@ export function TopBar() {
 }
 
 const TABS = [
-  { to: '/', label: 'Home', icon: Home },
+  { to: '/restaurants', label: 'Restaurants', icon: Store },
   { to: '/search', label: 'Search', icon: Search },
   { to: '/orders', label: 'Orders', icon: ReceiptText },
   { to: '/cart', label: 'Cart', icon: ShoppingBag },
@@ -356,45 +386,45 @@ export function BottomNav() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card">
+    <footer className="bg-plum-deep text-lilac">
       <div className="mx-auto w-full max-w-7xl px-4 pb-24 pt-10 md:px-8 md:pb-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <p className="font-display text-lg font-extrabold tracking-tight text-plum">
-              Purple<span className="text-royal">Foods</span>
+            <p className="font-display text-lg font-extrabold tracking-tight">
+              Purple<span className="text-saffron">Foods</span>
             </p>
-            <p className="mt-2 max-w-[28ch] text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[28ch] text-xs leading-relaxed text-lilac/60">
               Abuja’s restaurants, grills and bukas — tracked from flame to your doorstep.
             </p>
           </div>
           <nav aria-label="Explore">
-            <Mono className="text-royal">[EXPLORE]</Mono>
-            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
-              <li><Link to="/restaurants" className="transition-colors hover:text-royal">Restaurants</Link></li>
-              <li><Link to="/search" className="transition-colors hover:text-royal">Search</Link></li>
-              <li><Link to="/promos" className="transition-colors hover:text-royal">Promos & referrals</Link></li>
-              <li><Link to="/help" className="transition-colors hover:text-royal">Help & support</Link></li>
+            <Mono className="text-saffron">[EXPLORE]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold">
+              <li><Link to="/restaurants" className="transition-colors hover:text-saffron">Restaurants</Link></li>
+              <li><Link to="/search" className="transition-colors hover:text-saffron">Search</Link></li>
+              <li><Link to="/promos" className="transition-colors hover:text-saffron">Promos & referrals</Link></li>
+              <li><Link to="/help" className="transition-colors hover:text-saffron">Help & support</Link></li>
             </ul>
           </nav>
           <nav aria-label="Account">
-            <Mono className="text-royal">[ACCOUNT]</Mono>
-            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
-              <li><Link to="/orders" className="transition-colors hover:text-royal">Orders</Link></li>
-              <li><Link to="/favorites" className="transition-colors hover:text-royal">Favorites</Link></li>
-              <li><Link to="/account/addresses" className="transition-colors hover:text-royal">Saved addresses</Link></li>
-              <li><Link to="/notifications" className="transition-colors hover:text-royal">Notifications</Link></li>
+            <Mono className="text-saffron">[ACCOUNT]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold">
+              <li><Link to="/orders" className="transition-colors hover:text-saffron">Orders</Link></li>
+              <li><Link to="/favorites" className="transition-colors hover:text-saffron">Favorites</Link></li>
+              <li><Link to="/account/addresses" className="transition-colors hover:text-saffron">Saved addresses</Link></li>
+              <li><Link to="/notifications" className="transition-colors hover:text-saffron">Notifications</Link></li>
             </ul>
           </nav>
           <div>
-            <Mono className="text-royal">[CONTACT]</Mono>
-            <ul className="mt-3 space-y-2 text-sm font-semibold text-plum">
-              <li><a href="mailto:support@purplefoods.ng" className="break-all transition-colors hover:text-royal">support@purplefoods.ng</a></li>
-              <li><a href="tel:+2348000000000" className="transition-colors hover:text-royal">0800 000 0000</a></li>
-              <li className="font-normal text-muted-foreground">Abuja, Nigeria</li>
+            <Mono className="text-saffron">[CONTACT]</Mono>
+            <ul className="mt-3 space-y-2 text-sm font-semibold">
+              <li><a href="mailto:support@purplefoods.ng" className="break-all transition-colors hover:text-saffron">support@purplefoods.ng</a></li>
+              <li><a href="tel:+2348000000000" className="transition-colors hover:text-saffron">0800 000 0000</a></li>
+              <li className="font-normal text-lilac/60">Abuja, Nigeria</li>
             </ul>
           </div>
         </div>
-        <div className="mt-8 flex flex-col gap-1 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:flex-row md:justify-between">
+        <div className="mt-8 flex flex-col gap-1 border-t border-lilac/15 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-lilac/50 md:flex-row md:justify-between">
           <span>Purple Foods · © Smadsoft Technology Limited</span>
           <span>Customer · Rider · Merchant · Admin</span>
         </div>
