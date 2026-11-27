@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowDownWideNarrow, Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, PageHero } from '../ui'
 
 type Sort = 'rating' | 'eta' | 'fee'
 
@@ -29,13 +29,14 @@ export default function RestaurantsPage() {
   }, [restaurantsQuery.data, cat, sort])
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum md:text-3xl">All restaurants</h1>
-      <Mono className="mt-1 text-muted-foreground">
-        [{filtered.length} SPOTS · {area ? `${area.name.toUpperCase()}${area.cityName ? `, ${area.cityName.toUpperCase()}` : ''}` : 'ALL CITIES'}]
-      </Mono>
-
-      <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Cuisine categories">
+    <div className="pb-8">
+      <PageHero
+        icon={Store}
+        title="All restaurants"
+        sub={`${filtered.length} spots · ${area ? `${area.name}${area.cityName ? `, ${area.cityName}` : ''}` : 'All cities'}`}
+      />
+      <div className="mx-auto w-full max-w-7xl px-4 md:px-8">
+      <div className="no-scrollbar mt-5 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Cuisine categories">
         {categories.map((c) => (
           <button
             key={c}
@@ -94,6 +95,7 @@ export default function RestaurantsPage() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }

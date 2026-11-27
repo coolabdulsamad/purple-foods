@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router'
-import { ArrowLeft, Bell, Info, ReceiptText, Tag } from 'lucide-react'
+import { Bell, Info, ReceiptText, Tag } from 'lucide-react'
 import { useEffect } from 'react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { ErrorBlock, LoadingBlock, Mono } from '../ui'
+import { ErrorBlock, LoadingBlock, PageHero } from '../ui'
 
 const KIND_ICON = { order: ReceiptText, promo: Tag, info: Info } as const
 
@@ -40,21 +40,9 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-20 md:pt-24">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="rounded-full border border-border bg-card p-2.5 text-plum transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Notifications</h1>
-          <Mono className="text-muted-foreground">[INBOX]</Mono>
-        </div>
-      </div>
-
+    <div className="pb-8">
+      <PageHero icon={Bell} title="Notifications" sub="Inbox" />
+      <div className="mx-auto w-full max-w-3xl px-4 md:px-8">
       {notificationsQuery.isLoading ? (
         <LoadingBlock label="Loading notifications…" />
       ) : notificationsQuery.isError ? (
@@ -90,6 +78,7 @@ export default function NotificationsPage() {
           })}
         </ul>
       )}
+      </div>
     </div>
   )
 }

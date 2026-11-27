@@ -1,6 +1,5 @@
-import { useNavigate } from 'react-router'
-import { ArrowLeft, ChevronDown, LifeBuoy, Mail, Phone } from 'lucide-react'
-import { Mono } from '../ui'
+import { ChevronDown, LifeBuoy, Mail, Phone } from 'lucide-react'
+import { PageHero } from '../ui'
 
 const FAQS = [
   {
@@ -9,7 +8,7 @@ const FAQS = [
   },
   {
     q: 'What payment methods can I use?',
-    a: 'Cash on delivery works today. Paystack and Flutterwave (cards, transfer, USSD) switch on in the payments phase.',
+    a: 'Pay cash on delivery, by card via Paystack, or by bank transfer — for transfers we generate dedicated account details and a unique reference for each order.',
   },
   {
     q: 'Where do you deliver?',
@@ -30,25 +29,11 @@ const FAQS = [
 ]
 
 export default function HelpPage() {
-  const navigate = useNavigate()
-
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-20 md:pt-24">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="rounded-full border border-border bg-card p-2.5 text-plum transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Help & support</h1>
-          <Mono className="text-muted-foreground">[WE ANSWER FAST]</Mono>
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-2">
+    <div className="pb-8">
+      <PageHero icon={LifeBuoy} title="Help & support" sub="We answer fast" />
+      <div className="mx-auto w-full max-w-3xl px-4 md:px-8">
+      <div className="grid grid-cols-2 gap-2">
         <a
           href="mailto:support@purplefoods.ng"
           className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-4 text-center transition-colors hover:bg-lilac active:scale-[0.98]"
@@ -94,6 +79,7 @@ export default function HelpPage() {
       <p className="pb-4 pt-6 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
         Purple Foods · © Smadsoft Technology Limited
       </p>
+      </div>
     </div>
   )
 }

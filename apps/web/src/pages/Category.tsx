@@ -1,31 +1,18 @@
-import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, Store } from 'lucide-react'
+import { Link, useParams } from 'react-router'
+import { Store } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
-import { ErrorBlock, LoadingBlock, MerchantCard, Mono } from '../ui'
+import { ErrorBlock, LoadingBlock, MerchantCard, PageHero } from '../ui'
 
 export default function CategoryPage() {
   const { name } = useParams()
-  const navigate = useNavigate()
   const tag = decodeURIComponent(name ?? '')
   const restaurantsQuery = trpc.catalog.restaurants.useQuery()
   const matches = (restaurantsQuery.data ?? []).filter((r) => r.tags.includes(tag))
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-8 md:pt-24">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="rounded-full border border-border bg-card p-2.5 text-plum transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">{tag}</h1>
-          <Mono className="text-muted-foreground">[{matches.length} SPOTS]</Mono>
-        </div>
-      </div>
-
+    <div className="pb-8">
+      <PageHero icon={Store} title={tag} sub={`${matches.length} spots`} />
+      <div className="mx-auto w-full max-w-7xl px-4 md:px-8">
       {restaurantsQuery.isLoading ? (
         <LoadingBlock label="Loading…" />
       ) : restaurantsQuery.isError ? (
@@ -47,6 +34,7 @@ export default function CategoryPage() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }
