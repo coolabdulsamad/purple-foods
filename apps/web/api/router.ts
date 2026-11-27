@@ -17,18 +17,23 @@ import {
   registerWithEmail,
   requestOtp,
   revokeSession,
+  updateAvatar,
   updateProfile,
   verifyOtp,
 } from "./queries/auth";
 import {
   chargeSavedCard,
+  getBankTransferForOrder,
   initializePaystack,
   listCards,
   listTransactions,
+  markBankTransferSent,
   removeCard,
   setDefaultCard,
   verifyPaystack,
 } from "./queries/payments";
+import { reverseGeocode, searchAddress } from "./queries/geo";
+import { assistantChat } from "./queries/assistant";
 import { env } from "./lib/env";
 import {
   checkPromo,
@@ -104,8 +109,13 @@ const ordersRouter = createRouter({
         notes: z.string().max(500).default(""),
         areaId: z.string().uuid(),
         merchantSlug: z.string().min(1).max(80),
-        paymentMethod: z.enum(["cod", "paystack", "flutterwave"]),
+        paymentMethod: z.enum(["cod", "paystack", "flutterwave", "bank_transfer"]),
         promoCode: z.string().max(40).default(""),
+        receiverName: z.string().max(120).default(""),
+        receiverPhone: z.string().max(20).default(""),
+        scheduledFor: z.string().max(40).nullable().default(null),
+        deliveryLat: z.number().min(-90).max(90).nullable().default(null),
+        deliveryLng: z.number().min(-180).max(180).nullable().default(null),
         items: z
           .array(
             z.object({
@@ -188,6 +198,11 @@ const authRouter = createRouter({
     )
     .mutation(({ input, ctx }) => updateProfile(ctx.user.id, input)),
 
+  // Profile photo as a data URL (client pre-resizes to 256×256).
+  updateAvatar: protectedQuery
+    .input(z.object({ dataUrl: z.string().max(120_000) }))
+    .mutation(({ input, ctx }) => updateAvatar(ctx.user.id, input.dataUrl)),
+
   me: protectedQuery.query(({ ctx }) => ctx.user),
 
   logout: publicQuery.mutation(async ({ ctx }) => {
@@ -207,6 +222,8 @@ const addressesRouter = createRouter({
         areaId: z.string().uuid(),
         notes: z.string().max(300).default(""),
         isDefault: z.boolean().default(false),
+        lat: z.number().min(-90).max(90).nullable().default(null),
+        lng: z.number().min(-180).max(180).nullable().default(null),
       }),
     )
     .mutation(({ input, ctx }) => createAddress(ctx.user.id, input)),
@@ -254,7 +271,24 @@ const paymentsRouter = createRouter({
   // Gateway availability so checkout can enable/disable card options.
   config: publicQuery.query(() => ({
     paystackEnabled: !!env.paystackSecretKey,
+    // Manual account works with zero setup once BANK_* env vars exist;
+    // Paystack mode activates automatically when the secret key lands.
+    bankTransferEnabled: !!(env.bankAccountNumber || env.paystackSecretKey),
   })),
+
+  // Bank-transfer instruction for an order the customer owns.
+  bankTransfer: protectedQuery
+    .input(z.object({ orderId: z.string().uuid() }))
+    .query(({ input, ctx }) =>
+      getBankTransferForOrder(ctx.user.id, input.orderId),
+    ),
+
+  // Customer tapped "I've sent it" — staff confirms on the admin side.
+  markTransferSent: protectedQuery
+    .input(z.object({ orderId: z.string().uuid() }))
+    .mutation(({ input, ctx }) =>
+      markBankTransferSent(ctx.user.id, input.orderId),
+    ),
 
   // Start a Paystack hosted checkout for an unpaid order. The client
   // passes its origin so the gateway can redirect back into the app.
@@ -340,6 +374,51 @@ const reviewsRouter = createRouter({
     .query(({ input }) => listMerchantReviews(input.slug)),
 });
 
+// Geocoding proxy — Nominatim needs a User-Agent and no CORS, so the
+// browser always talks to us and we talk to OSM (with a 10-min cache).
+const geoRouter = createRouter({
+  search: publicQuery
+    .input(z.object({ query: z.string().min(3).max(200) }))
+    .query(({ input }) => searchAddress(input.query)),
+
+  reverse: publicQuery
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+      }),
+    )
+    .query(({ input }) => reverseGeocode(input.lat, input.lng)),
+});
+
+// Purple — the in-app AI assistant. Public (guests can ask too); the
+// engine falls back to the built-in intent matcher when no LLM key is
+// configured, so it works from day one.
+const assistantRouter = createRouter({
+  chat: publicQuery
+    .input(
+      z.object({
+        messages: z
+          .array(
+            z.object({
+              role: z.enum(["user", "assistant"]),
+              content: z.string().min(1).max(1000),
+            }),
+          )
+          .min(1)
+          .max(30),
+        areaName: z.string().max(80).optional(),
+      }),
+    )
+    .mutation(({ input, ctx }) =>
+      assistantChat({
+        messages: input.messages,
+        areaName: input.areaName,
+        signedIn: !!ctx.user,
+      }),
+    ),
+});
+
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
   catalog: catalogRouter,
@@ -350,6 +429,8 @@ export const appRouter = createRouter({
   notifications: notificationsRouter,
   payments: paymentsRouter,
   promos: promosRouter,
+  geo: geoRouter,
+  assistant: assistantRouter,
   reviews: reviewsRouter,
 });
 

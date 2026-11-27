@@ -12,7 +12,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentMethod = "cod" | "paystack" | "flutterwave";
+export type PaymentMethod = "cod" | "paystack" | "flutterwave" | "bank_transfer";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
@@ -140,6 +140,14 @@ export interface OrderDto {
   deliveryStreet: string;
   deliveryNotes: string;
   deliveryAreaName: string;
+  /** Send-to-someone receiver (null → the customer receives it). */
+  receiverName: string | null;
+  receiverPhone: string | null;
+  /** Scheduled delivery time (null → deliver ASAP). */
+  scheduledFor: string | null;
+  /** Exact drop-off pin picked on the checkout map (nullable). */
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   /** Kitchen coordinates — powers the live tracking map (nullable on
    *  legacy rows). */
   merchantLat: number | null;
@@ -156,6 +164,20 @@ export interface CreateOrderResult {
   totalKobo: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  /** Present when paymentMethod is bank_transfer — the account to pay. */
+  bankTransfer?: BankTransferDto;
+}
+
+/** Per-order bank transfer instruction (0011). */
+export interface BankTransferDto {
+  reference: string;
+  amountKobo: number;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  provider: string;
+  status: "pending" | "sent" | "paid" | "expired";
+  expiresAt: string | null;
 }
 
 // ── Auth (phone OTP · email+password · Google) ─────────────────────
@@ -194,6 +216,9 @@ export interface AddressDto {
   areaName: string;
   notes: string;
   isDefault: boolean;
+  /** Pin coordinates from the map picker (nullable on legacy rows). */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface NotificationDto {
@@ -287,4 +312,64 @@ export interface ReferralDto {
   code: string;
   /** Reward the friend gets for using the code, for display. */
   friendDiscountKobo: number;
+}
+
+// ── Geo search (map address picker) ────────────────────────────────
+
+export interface GeoResultDto {
+  label: string;
+  lat: number;
+  lng: number;
+}
+
+// ── AI assistant ───────────────────────────────────────────────────
+
+/** One chat message the client keeps and resends for context. */
+export interface AssistantMessageDto {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/** A dish the assistant recommends — rendered as an add-to-cart card. */
+export interface AssistantDishDto {
+  id: string;
+  name: string;
+  description: string;
+  priceKobo: number;
+  photoUrl: string | null;
+  isSpicy: boolean;
+  merchantSlug: string;
+  merchantName: string;
+  deliveryFeeKobo: number;
+  etaMin: number;
+  etaMax: number;
+}
+
+/** A restaurant the assistant recommends — rendered as a link card. */
+export interface AssistantRestaurantDto {
+  slug: string;
+  name: string;
+  areaName: string;
+  rating: number;
+  etaMin: number;
+  etaMax: number;
+  deliveryFeeKobo: number;
+  coverUrl: string | null;
+  logoUrl: string | null;
+  tags: string[];
+}
+
+/** A button the assistant offers (navigates inside the app). */
+export interface AssistantActionDto {
+  label: string;
+  path: string;
+}
+
+export interface AssistantReplyDto {
+  reply: string;
+  dishes: AssistantDishDto[];
+  restaurants: AssistantRestaurantDto[];
+  actions: AssistantActionDto[];
+  /** True when the full LLM answered; false = built-in smart fallback. */
+  aiPowered: boolean;
 }
