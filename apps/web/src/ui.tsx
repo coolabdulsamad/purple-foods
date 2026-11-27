@@ -273,6 +273,9 @@ export function TopBar() {
             Search dishes, restaurants…
           </Link>
           <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0 md:gap-2">
+            <Link to="/" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-saffron lg:block">
+              Home
+            </Link>
             <Link to="/restaurants" className="hidden rounded-full px-3 py-2 text-sm font-semibold transition-colors hover:text-saffron lg:block">
               Restaurants
             </Link>
@@ -400,6 +403,7 @@ export function Footer() {
           <nav aria-label="Explore">
             <Mono className="text-saffron">[EXPLORE]</Mono>
             <ul className="mt-3 space-y-2 text-sm font-semibold">
+              <li><Link to="/" className="transition-colors hover:text-saffron">Home</Link></li>
               <li><Link to="/restaurants" className="transition-colors hover:text-saffron">Restaurants</Link></li>
               <li><Link to="/search" className="transition-colors hover:text-saffron">Search</Link></li>
               <li><Link to="/promos" className="transition-colors hover:text-saffron">Promos & referrals</Link></li>
