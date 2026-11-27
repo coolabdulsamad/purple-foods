@@ -55,4 +55,14 @@ export const env = {
   // Public base URL of the app, used for the Paystack callback. Falls
   // back to the request origin when unset.
   appBaseUrl: process.env.APP_BASE_URL ?? "",
+  // AI assistant: any OpenAI-compatible chat endpoint (Moonshot/Kimi,
+  // OpenAI, Groq…). Absent key → the built-in smart fallback answers.
+  aiApiKey: process.env.AI_API_KEY ?? "",
+  aiBaseUrl: (process.env.AI_BASE_URL ?? "https://api.moonshot.cn/v1").replace(/\/+$/, ""),
+  aiModel: process.env.AI_MODEL ?? "kimi-k2-0905-preview",
+  // Bank transfer collection account (manual mode — used until a
+  // gateway provisions per-order accounts). Customer-visible values.
+  bankAccountNumber: process.env.BANK_ACCOUNT_NUMBER ?? "",
+  bankAccountName: process.env.BANK_ACCOUNT_NAME ?? "Smadsoft Technology Limited",
+  bankName: process.env.BANK_NAME ?? "",
 };

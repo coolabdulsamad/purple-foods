@@ -27,6 +27,7 @@ import m0007 from "../../db/migrations/0007_multicity_merchants.sql";
 import m0008 from "../../db/migrations/0008_item_options.sql";
 import m0009 from "../../db/migrations/0009_payments_reviews_promos.sql";
 import m0010 from "../../db/migrations/0010_merchant_branding.sql";
+import m0011 from "../../db/migrations/0011_delivery_bank_transfer.sql";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -41,6 +42,7 @@ const MIGRATIONS: ReadonlyArray<readonly [string, string]> = [
   ["0008_item_options.sql", m0008],
   ["0009_payments_reviews_promos.sql", m0009],
   ["0010_merchant_branding.sql", m0010],
+  ["0011_delivery_bank_transfer.sql", m0011],
 ];
 
 export async function ensureSchema(): Promise<void> {
