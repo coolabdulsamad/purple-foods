@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Toaster } from 'sonner'
 import { StoreProvider } from './store'
 import { Assistant } from './components/Assistant'
+import { FloatDock } from './components/FloatDock'
 import { BottomNav, Footer, TopBar } from './ui'
 import {
   AccountPage,
@@ -84,6 +85,7 @@ function Shell() {
       {!chromeless && <Footer />}
       {!chromeless && <BottomNav />}
       {!chromeless && <Assistant />}
+      {!chromeless && <FloatDock />}
     </div>
   )
 }
