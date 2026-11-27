@@ -676,3 +676,36 @@ export async function updateProfile(
   }
   return toSessionUser(updated[0]);
 }
+
+// Avatar lives directly in users.avatar_url as a data URL — the client
+// resizes to 256×256 JPEG (~30-60 KB) so the DB row stays small, and the
+// image survives rebuilds without any file-serving infrastructure.
+const AVATAR_DATA_URL_MAX = 120_000; // chars — generous headroom over 60 KB
+
+export async function updateAvatar(
+  userId: string,
+  dataUrl: string,
+): Promise<SessionUserDto> {
+  if (!/^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(dataUrl)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Choose a JPEG, PNG or WebP image.",
+    });
+  }
+  if (dataUrl.length > AVATAR_DATA_URL_MAX) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That image is too large — please pick a smaller one.",
+    });
+  }
+  const db = getDb();
+  const updated = await db
+    .update(users)
+    .set({ avatarUrl: dataUrl, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+  if (!updated[0]) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Account not found." });
+  }
+  return toSessionUser(updated[0]);
+}
