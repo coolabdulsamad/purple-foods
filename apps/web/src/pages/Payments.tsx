@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router'
-import { ArrowLeft, BadgeCheck, CreditCard, Loader2, LogIn, ShieldCheck, Trash2 } from 'lucide-react'
+import { BadgeCheck, CreditCard, Loader2, LogIn, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { Mono } from '../ui'
+import { PageHero } from '../ui'
 
 export default function PaymentsPage() {
   const { session } = useStore()
@@ -43,14 +43,10 @@ export default function PaymentsPage() {
   const paystackEnabled = gatewayQuery.data?.paystackEnabled ?? false
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-20 md:pt-24">
-      <button onClick={() => navigate('/account')} className="flex items-center gap-1.5 text-xs font-bold text-royal">
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Account
-      </button>
-      <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-plum">Payment cards</h1>
-      <Mono className="mt-1 text-muted-foreground">[YOUR CARD BOOK]</Mono>
-
-      <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-mint bg-mint-soft p-3.5">
+    <div className="pb-8">
+      <PageHero icon={CreditCard} title="Payment cards" sub="Your card book" />
+      <div className="mx-auto w-full max-w-2xl px-4 md:px-8">
+      <div className="flex items-start gap-2.5 rounded-2xl border border-mint bg-mint-soft p-3.5">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-mint" aria-hidden="true" />
         <p className="text-xs leading-relaxed text-plum">
           Cards are tokenized by Paystack — Purple Foods stores only the last 4 digits and card type. New cards are added automatically the first time you pay by card at checkout.
@@ -122,6 +118,7 @@ export default function PaymentsPage() {
       <p className="mt-6 text-center text-[11px] leading-relaxed text-muted-foreground">
         To add a card, place an order and choose “Card via Paystack” at checkout.
       </p>
+      </div>
     </div>
   )
 }

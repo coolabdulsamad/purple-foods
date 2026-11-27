@@ -3,7 +3,7 @@ import { AlertTriangle, Minus, PencilLine, Plus, ShoppingBag, Trash2, ArrowRight
 import { toast } from 'sonner'
 import { useStore } from '../store'
 import { cartLineUnitKobo } from '../types'
-import { DishImage, Mono, fmt } from '../ui'
+import { DishImage, PageHero, fmt } from '../ui'
 
 export default function CartPage() {
   const { lines, subtotalKobo, deliveryFeeKobo, totalKobo, setQty, clear, cartRestaurant } = useStore()
@@ -20,23 +20,22 @@ export default function CartPage() {
     )
   }
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Cart</h1>
+    <div className="pb-8">
+      <PageHero icon={ShoppingBag} title="Cart" sub={cartRestaurant?.name ?? 'Your basket'}>
         <button
           onClick={() => {
             clear()
             toast.success('Cart cleared')
           }}
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-destructive active:scale-95"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-lilac/15 px-3.5 py-2 text-xs font-bold text-lilac transition-colors hover:bg-lilac/25 active:scale-95"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
           Clear
         </button>
-      </div>
-      <Mono className="mt-1 text-muted-foreground">[{(cartRestaurant?.name ?? '').toUpperCase()}]</Mono>
+      </PageHero>
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-8">
       <div className="lg:grid lg:grid-cols-[1fr_360px] lg:items-start lg:gap-8">
-      <ul className="mt-4 space-y-3 lg:mt-2">
+      <ul className="mt-5 space-y-3 lg:mt-2">
         {lines.map((l) => {
           const unit = cartLineUnitKobo(l)
           const options = l.options ?? []
@@ -128,6 +127,7 @@ export default function CartPage() {
         Checkout · {fmt(totalKobo)}
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
+      </div>
       </div>
       </div>
     </div>

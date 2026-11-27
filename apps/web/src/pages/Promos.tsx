@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router'
-import { ArrowLeft, BadgePercent, Copy, Loader2, Tag, Truck, Users } from 'lucide-react'
+import { BadgePercent, Copy, Loader2, Truck, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { Grain, Mono, fmt } from '../ui'
+import { Grain, Mono, PageHero, fmt } from '../ui'
 import type { PromoCodeDto } from '../types'
 
 function promoTitle(p: PromoCodeDto): string {
@@ -42,21 +42,9 @@ export default function PromosPage() {
   const referral = referralQuery.data
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pt-20 md:px-8 md:pt-24">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
-          className="rounded-full border border-border bg-card p-2.5 text-plum transition-transform duration-150 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-plum">Promos & referrals</h1>
-          <Mono className="text-muted-foreground">[LIVE OFFERS]</Mono>
-        </div>
-      </div>
-
+    <div className="pb-8">
+      <PageHero icon={BadgePercent} title="Promos & referrals" sub="Live offers" />
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-8">
       {promosQuery.isLoading ? (
         <div className="flex justify-center pt-16">
           <Loader2 className="h-6 w-6 animate-spin text-royal" aria-hidden="true" />
@@ -132,6 +120,7 @@ export default function PromosPage() {
       <p className="mt-5 pb-4 text-center text-[11px] leading-relaxed text-muted-foreground">
         Codes apply at checkout — type or paste them into the promo box on the checkout page. One code per order.
       </p>
+      </div>
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, Loader2, LogIn, ReceiptText, XCircle } from 'lucide-react'
+import { ArrowRight, BadgeCheck, Clock3, Loader2, LogIn, ReceiptText, XCircle } from 'lucide-react'
 import { trpc } from '@/providers/trpc'
 import { useStore } from '../store'
-import { Mono, fmt } from '../ui'
+import { PageHero, fmt } from '../ui'
 
 type StatusFilter = 'all' | 'success' | 'pending' | 'failed'
 
@@ -57,13 +57,9 @@ export default function TransactionsPage() {
   const paidTotal = all.filter((t) => t.status === 'success').reduce((n, t) => n + t.amountKobo, 0)
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-20 md:pt-24">
-      <button onClick={() => navigate('/account')} className="flex items-center gap-1.5 text-xs font-bold text-royal">
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Account
-      </button>
-      <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-plum">Transactions</h1>
-      <Mono className="mt-1 text-muted-foreground">[YOUR PAYMENT HISTORY]</Mono>
-
+    <div className="pb-8">
+      <PageHero icon={ReceiptText} title="Transactions" sub="Your payment history" />
+      <div className="mx-auto w-full max-w-2xl px-4 md:px-8">
       {all.length > 0 && (
         <div className="mt-4 flex items-center justify-between rounded-2xl bg-plum-deep p-4 text-lilac">
           <div>
@@ -139,6 +135,7 @@ export default function TransactionsPage() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }
