@@ -25,8 +25,12 @@ import {
   users,
 } from "@db/schema";
 import { getDb } from "./connection";
+import { log } from "../lib/logger";
 import { notifyReferrer, resolvePromo } from "./promos";
-import { recordOrderTransaction } from "./payments";
+import {
+  createBankTransferForOrder,
+  recordOrderTransaction,
+} from "./payments";
 
 // ── Phone normalization ────────────────────────────────────────────
 // Nigeria-first: accept +2348012345678, 2348012345678, or 08012345678
@@ -73,6 +77,14 @@ export interface CreateOrderInput {
   paymentMethod: PaymentMethod;
   /** Optional promo/referral code — validated and priced server-side. */
   promoCode?: string;
+  /** "Send to someone" — recipient differs from the ordering customer. */
+  receiverName?: string;
+  receiverPhone?: string;
+  /** Schedule delivery for a future date/time (ISO string). */
+  scheduledFor?: string | null;
+  /** Pin the customer dropped on the checkout map. */
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
   items: CreateOrderItemInput[];
 }
 
@@ -97,6 +109,41 @@ export async function createOrder(
       code: "BAD_REQUEST",
       message: "Delivery address is required.",
     });
+  }
+
+  // "Send to someone" recipient — validated only when gifting.
+  const receiverName = input.receiverName?.trim() ?? "";
+  const receiverPhone = input.receiverPhone?.trim() ?? "";
+  if (receiverName || receiverPhone) {
+    if (!receiverName || !receiverPhone) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Add both the receiver's name and phone number — or clear both.",
+      });
+    }
+  }
+  const normalizedReceiverPhone = receiverPhone
+    ? normalizePhone(receiverPhone)
+    : null;
+
+  // Scheduled delivery — must be a valid future timestamp.
+  let scheduledFor: Date | null = null;
+  if (input.scheduledFor) {
+    const when = new Date(input.scheduledFor);
+    if (Number.isNaN(when.getTime())) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Pick a valid delivery date and time.",
+      });
+    }
+    if (when.getTime() < Date.now() + 15 * 60_000) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Scheduled delivery must be at least 15 minutes from now.",
+      });
+    }
+    scheduledFor = when;
   }
 
   // ── Validate the restaurant ──────────────────────────────────────
@@ -289,7 +336,7 @@ export async function createOrder(
   for (let attempt = 0; attempt < 5; attempt++) {
     const humanRef = newHumanRef();
     try {
-      const result = await db.transaction(async (tx) => {
+      const result = await db.transaction<CreateOrderResult>(async (tx) => {
         // Signed-in: pin the order to the session user. Guest: find or
         // create the customer by phone; refresh name/last_seen either way.
         let customerId: string;
@@ -358,6 +405,13 @@ export async function createOrder(
             deliveryPhone: phone,
             deliveryStreet: street,
             deliveryNotes: input.notes.trim(),
+            receiverName: receiverName || null,
+            receiverPhone: normalizedReceiverPhone,
+            scheduledFor,
+            deliveryLat:
+              input.deliveryLat == null ? null : String(input.deliveryLat),
+            deliveryLng:
+              input.deliveryLng == null ? null : String(input.deliveryLng),
           })
           .returning({ id: orders.id });
 
@@ -384,7 +438,9 @@ export async function createOrder(
           note:
             input.paymentMethod === "cod"
               ? "Order placed — pay on delivery"
-              : `Order placed — ${input.paymentMethod} (gateway pending)`,
+              : input.paymentMethod === "bank_transfer"
+                ? "Order placed — awaiting bank transfer"
+                : `Order placed — ${input.paymentMethod} (gateway pending)`,
         });
 
         // Promo redemption: store codes count usage; referral codes pin
@@ -449,6 +505,23 @@ export async function createOrder(
           provider: "cod",
           amountKobo: BigInt(result.totalKobo),
         });
+      }
+      if (input.paymentMethod === "bank_transfer") {
+        // Generates the account details the customer pays into. Never
+        // throws away the order — on internal failure the tracking page
+        // still renders and support can reconcile manually.
+        try {
+          result.bankTransfer = await createBankTransferForOrder({
+            userId: orderCustomerId,
+            orderId: result.orderId,
+            amountKobo: BigInt(result.totalKobo),
+          });
+        } catch (err) {
+          log.error("bank transfer creation failed after order commit", {
+            orderId: result.orderId,
+            err: String(err),
+          });
+        }
       }
       if (promo?.referrerId) {
         await notifyReferrer(promo.referrerId, name).catch(() => undefined);
@@ -542,6 +615,11 @@ export async function listOrdersByUser(customerId: string): Promise<OrderDto[]> 
     deliveryStreet: o.deliveryStreet,
     deliveryNotes: o.deliveryNotes,
     deliveryAreaName: a.name,
+    receiverName: o.receiverName,
+    receiverPhone: o.receiverPhone,
+    scheduledFor: o.scheduledFor ? o.scheduledFor.toISOString() : null,
+    deliveryLat: o.deliveryLat == null ? null : Number(o.deliveryLat),
+    deliveryLng: o.deliveryLng == null ? null : Number(o.deliveryLng),
     // Kitchen + delivery-zone coordinates for the live tracking map.
     merchantLat: m.lat == null ? null : Number(m.lat),
     merchantLng: m.lng == null ? null : Number(m.lng),
